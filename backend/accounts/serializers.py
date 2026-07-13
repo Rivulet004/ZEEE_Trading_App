@@ -34,6 +34,16 @@ class EnterpriseRegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("An agent account with this email address already exists.")
         return value
 
+    def validate_company_name(self, value):
+        if Company.objects.filter(legal_name__iexact=value).exists():
+            raise serializers.ValidationError("A corporate client with this legal company name already exists.")
+        return value
+
+    def validate_corporate_email(self, value):
+        if Company.objects.filter(corporate_email__iexact=value).exists():
+            raise serializers.ValidationError("A corporate client with this corporate email address already exists.")
+        return value
+
     def create(self, validated_data):
         # Extract our nested corporate structural assets from the validated dictionary object
         company_name = validated_data.pop('company_name')

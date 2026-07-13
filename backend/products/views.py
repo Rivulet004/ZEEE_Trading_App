@@ -3,7 +3,10 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from accounts.models import CompanyLocation
-from .models import Product
+
+from django.db import transaction
+from accounts.models import CompanyLocation
+from .models import Product, Order, OrderItem
 from .utils import calculate_item_price
 
 class ProductPriceEvaluationView(APIView):
@@ -37,3 +40,165 @@ class ProductPriceEvaluationView(APIView):
 
         except Product.DoesNotExist:
             return Response({"error": "Product catalog asset not found."}, status=status.HTTP_404_NOT_FOUND)
+
+
+class CheckoutError(Exception):
+    """Custom exception to roll back transactions and convey custom HTTP status codes."""
+    def __init__(self, message, status_code):
+        self.message = message
+        self.status_code = status_code
+        super().__init__(message)
+
+
+class InventoryCheckoutView(APIView):
+    """
+    Processes incoming mobile shopping carts, executes real-time stock deductions,
+    and commits unalterable financial purchase orders to the ledger.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        location_id = request.data.get('location_id')
+        cart_items = request.data.get('items', [])  # Expects list: [{"sku": "...", "quantity": 2}]
+
+        if not location_id or not cart_items:
+            return Response(
+                {"error": "Missing location identity or shopping cart contents."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Look up the target delivery branch location matching this user's company tenant
+        location = CompanyLocation.objects.filter(id=location_id, company=user.company).first()
+        if not location:
+            return Response(
+                {"error": "Invalid or unauthorized corporate facility selection."}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Wrap everything in an atomic database block. If anything fails, all changes roll back instantly.
+        try:
+            with transaction.atomic():
+                total_order_amount = 0
+                order_items_to_create = []
+
+                # Build out the text address snapshot permanently
+                address_snapshot = f"{location.location_name}\n{location.delivery_address} (ZIP: {location.zip_code})"
+                tax_snapshot = location.sales_tax_id or 'NOT_PROVIDED'
+
+                # Loop through and process each item in the cart array
+                for item in cart_items:
+                    sku = item.get('sku')
+                    quantity = int(item.get('quantity', 0))
+
+                    if quantity <= 0:
+                        raise CheckoutError(
+                            f"Invalid item quantity specified for SKU: {sku}.", 
+                            status.HTTP_400_BAD_REQUEST
+                        )
+
+                    # Select for update locks the row in PostgreSQL to prevent simultaneous stock tampering
+                    product = Product.objects.select_for_update().filter(sku=sku).first()
+                    if not product:
+                        raise CheckoutError(
+                            f"Catalog item matching SKU '{sku}' does not exist.", 
+                            status.HTTP_404_NOT_FOUND
+                        )
+
+                    # Verify inventory thresholds
+                    if product.stock_quantity < quantity:
+                        raise CheckoutError(
+                            f"Insufficient stock allocation for {product.name}. Available: {product.stock_quantity}.", 
+                            status.HTTP_409_CONFLICT
+                        )
+
+                    # Deduct stock counts immediately
+                    product.stock_quantity -= quantity
+                    product.save()
+
+                    # Calculate the true real-time contract/regional tier price
+                    price_paid = calculate_item_price(user, location, product)
+                    line_total = price_paid * quantity
+                    total_order_amount += line_total
+
+                    # Queue up the line item payload array
+                    order_items_to_create.append({
+                        "product": product,
+                        "quantity": quantity,
+                        "price_paid": price_paid
+                    })
+
+                # Create the master transaction envelope record
+                master_order = Order.objects.create(
+                    user=user,
+                    location=location,
+                    delivery_address_snapshot=address_snapshot,
+                    sales_tax_id_snapshot=tax_snapshot,
+                    total_amount=total_order_amount
+                )
+
+                # Commit all queued items pointing back to the master envelope ID
+                for line in order_items_to_create:
+                    OrderItem.objects.create(
+                        order=master_order,
+                        product=line["product"],
+                        quantity=line["quantity"],
+                        price_paid=line["price_paid"]
+                    )
+
+                return Response({
+                    "message": "Commercial purchase order authorized successfully.",
+                    "order_id": master_order.id,
+                    "total_amount": str(master_order.total_amount),
+                    "status": master_order.status
+                }, status=status.HTTP_201_CREATED)
+
+        except CheckoutError as ce:
+            return Response(
+                {"error": ce.message}, 
+                status=ce.status_code
+            )
+        except Exception as e:
+            return Response(
+                {"error": f"An unhandled execution event faulted the checkout loop: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class CustomerOrderHistoryView(APIView):
+    """
+    Secure endpoint allowing authenticated users to fetch historical transaction logs
+    matching their corporate tenant profile.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        if not user.company:
+            return Response([], status=status.HTTP_200_OK)
+
+        # Retrieve orders for the user's company, ordering by creation time descending
+        orders = Order.objects.filter(user__company=user.company).prefetch_related('items__product').order_by('-created_at')
+        
+        data = []
+        for order in orders:
+            data.append({
+                "id": order.id,
+                "order_id": order.id,
+                "status": order.status,
+                "total_amount": str(order.total_amount),
+                "tax_amount": str(order.tax_amount),
+                "delivery_address_snapshot": order.delivery_address_snapshot,
+                "sales_tax_id_snapshot": order.sales_tax_id_snapshot,
+                "created_at": order.created_at.isoformat(),
+                "items": [
+                    {
+                        "product_sku": item.product.sku,
+                        "product_name": item.product.name,
+                        "quantity": item.quantity,
+                        "price_paid": str(item.price_paid),
+                    }
+                    for item in order.items.all()
+                ]
+            })
+        return Response(data, status=status.HTTP_200_OK)

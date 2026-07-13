@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.contrib.auth.forms import PasswordResetForm
@@ -20,6 +20,7 @@ class EnterpriseRegisterView(APIView):
     maps their first physical Shipping Location, hashes the admin password,
     and returns a clean pair of short-lived Access and long-lived Refresh JWTs.
     """
+    permission_classes = [AllowAny]
     def post(self, request):
         # Bind the incoming multi-tier JSON data payload to our enterprise registration engine
         serializer = EnterpriseRegisterSerializer(data=request.data)
@@ -74,6 +75,7 @@ class PasswordResetRequestView(APIView):
     Receives email parameters and generates cryptographic recovery signatures.
     Outputs cleartext links directly into the terminal window during local development iterations.
     """
+    permission_classes = [AllowAny]
     def post(self, request):
         form = PasswordResetForm(request.data)
         if form.is_valid():

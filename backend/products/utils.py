@@ -15,7 +15,7 @@ def calculate_item_price(user, location, product):
             product=product
         ).first()
         if custom_tier:
-            return custom_tier.custom_price
+            return custom_tier.negotiated_price
 
     # 2. Tier 2: Check for a regional location ZIP code override
     if location and location.zip_code:

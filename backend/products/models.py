@@ -32,14 +32,14 @@ class Product(models.Model):
     # Newly Integrated Relationships & Media Attributes
     category = models.ForeignKey(
         Category, 
-        on_delete=models.SET_Null, 
+        on_delete=models.SET_NULL, 
         null=True, 
         blank=True, 
         related_name="products",
         help_text="Primary classification group."
     )
     image = models.ImageField(
-        upload_base="products/catalog/", 
+        upload_to="products/catalog/", 
         blank=True, 
         null=True, 
         help_text="Visual catalog thumbnail asset."

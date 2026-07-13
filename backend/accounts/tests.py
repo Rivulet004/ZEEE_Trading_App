@@ -1,3 +1,197 @@
-from django.test import TestCase
+from django.contrib.auth import get_user_model
+from django.urls import reverse
+from rest_framework import status
+from rest_framework.test import APITestCase
 
-# Create your tests here.
+from accounts.models import Company, CompanyLocation
+
+User = get_user_model()
+
+class AccountsSystemTests(APITestCase):
+    """Verifies authentication, tenant onboarding, and user validation constraints."""
+
+    def setUp(self):
+        # Establish base targets
+        self.register_url = reverse('api_register')
+        self.login_url = reverse('api_login')
+        self.check_token_url = reverse('api_check_token')
+        self.password_reset_url = reverse('api_password_reset')
+
+        # Create a pre-existing tenant structure to test validation duplicates
+        self.existing_company = Company.objects.create(
+            legal_name="Zevron Foods",
+            corporate_email="wholesale@zevron.com"
+        )
+        self.existing_location = CompanyLocation.objects.create(
+            company=self.existing_company,
+            location_name="Hattiesburg Branch",
+            delivery_address="100 Innovation Way",
+            zip_code="39401",
+            sales_tax_id="TAX-Z-999"
+        )
+        self.existing_user = User.objects.create_user(
+            username="zevron_admin",
+            email="admin@zevron.com",
+            password="securepassword123",
+            company=self.existing_company,
+            role=User.UserRoles.ADMIN
+        )
+
+    def test_successful_corporate_onboarding(self):
+        """Verifies that nested JSON payload creates company, location, and owner admin accounts."""
+        payload = {
+            "username": "new_b2b_admin",
+            "password": "brandnewpassword123",
+            "email": "owner@newcorp.com",
+            "first_name": "John",
+            "last_name": "Doe",
+            "company_name": "New Corp Foods LLC",
+            "corporate_email": "ops@newcorp.com",
+            "location_data": {
+                "location_name": "Primary Warehouse",
+                "delivery_address": "400 Logistics Blvd, Houston, TX",
+                "zip_code": "77001",
+                "sales_tax_id": "TAX-TX-888"
+            }
+        }
+
+        response = self.client.post(self.register_url, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn("access", response.data)
+        self.assertIn("refresh", response.data)
+        self.assertIn("user", response.data)
+        self.assertEqual(response.data["user"]["username"], "new_b2b_admin")
+        self.assertEqual(response.data["user"]["company_name"], "New Corp Foods LLC")
+
+        # Verify DB states
+        company_exists = Company.objects.filter(legal_name="New Corp Foods LLC").exists()
+        self.assertTrue(company_exists)
+        
+        user = User.objects.get(username="new_b2b_admin")
+        self.assertEqual(user.email, "owner@newcorp.com")
+        self.assertEqual(user.role, User.UserRoles.ADMIN)
+        self.assertEqual(user.company.legal_name, "New Corp Foods LLC")
+        
+        location = CompanyLocation.objects.get(company=user.company)
+        self.assertEqual(location.location_name, "Primary Warehouse")
+        self.assertEqual(location.zip_code, "77001")
+        self.assertEqual(location.sales_tax_id, "TAX-TX-888")
+
+    def test_register_duplicate_username_fails(self):
+        """Verifies that duplicate username requests are rejected."""
+        payload = {
+            "username": "zevron_admin", # Duplicate
+            "password": "somepassword123",
+            "email": "different@email.com",
+            "company_name": "Unique Company Ltd",
+            "corporate_email": "unique@company.com",
+            "location_data": {
+                "delivery_address": "123 Lane",
+                "zip_code": "12345",
+                "sales_tax_id": "TAX-123"
+            }
+        }
+        response = self.client.post(self.register_url, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("username", response.data)
+
+    def test_register_duplicate_email_fails(self):
+        """Verifies that duplicate human user email registration is rejected."""
+        payload = {
+            "username": "new_admin_user",
+            "password": "somepassword123",
+            "email": "admin@zevron.com", # Duplicate
+            "company_name": "Unique Company Ltd",
+            "corporate_email": "unique@company.com",
+            "location_data": {
+                "delivery_address": "123 Lane",
+                "zip_code": "12345",
+                "sales_tax_id": "TAX-123"
+            }
+        }
+        response = self.client.post(self.register_url, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("email", response.data)
+
+    def test_register_duplicate_company_name_fails(self):
+        """Verifies that registering with an existing legal company name is rejected."""
+        payload = {
+            "username": "new_admin_user",
+            "password": "somepassword123",
+            "email": "new@email.com",
+            "company_name": "Zevron Foods", # Duplicate
+            "corporate_email": "unique@company.com",
+            "location_data": {
+                "delivery_address": "123 Lane",
+                "zip_code": "12345",
+                "sales_tax_id": "TAX-123"
+            }
+        }
+        response = self.client.post(self.register_url, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("company_name", response.data)
+        self.assertIn("legal company name already exists", str(response.data["company_name"]))
+
+    def test_register_duplicate_corporate_email_fails(self):
+        """Verifies that registering with an existing corporate email is rejected."""
+        payload = {
+            "username": "new_admin_user",
+            "password": "somepassword123",
+            "email": "new@email.com",
+            "company_name": "Unique Company Ltd",
+            "corporate_email": "wholesale@zevron.com", # Duplicate
+            "location_data": {
+                "delivery_address": "123 Lane",
+                "zip_code": "12345",
+                "sales_tax_id": "TAX-123"
+            }
+        }
+        response = self.client.post(self.register_url, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("corporate_email", response.data)
+        self.assertIn("corporate email address already exists", str(response.data["corporate_email"]))
+
+    def test_jwt_login_success(self):
+        """Verifies JWT login returns tokens and serialize profile data correctly."""
+        payload = {
+            "username": "zevron_admin",
+            "password": "securepassword123"
+        }
+        response = self.client.post(self.login_url, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("access", response.data)
+        self.assertIn("refresh", response.data)
+        self.assertIn("user", response.data)
+        self.assertEqual(response.data["user"]["role"], "ADMIN")
+        self.assertEqual(response.data["user"]["company_name"], "Zevron Foods")
+
+    def test_jwt_login_invalid_credentials_fails(self):
+        """Verifies that bad login credentials return unauthorized status."""
+        payload = {
+            "username": "zevron_admin",
+            "password": "wrongpassword"
+        }
+        response = self.client.post(self.login_url, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_check_token_endpoint(self):
+        """Verifies JWT validation gateway confirms access credentials."""
+        self.client.force_authenticate(user=self.existing_user)
+        response = self.client.get(self.check_token_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data["authenticated"])
+        self.assertEqual(response.data["user"]["username"], "zevron_admin")
+
+    def test_check_token_unauthenticated_is_blocked(self):
+        """Verifies unauthenticated token pings are blocked."""
+        response = self.client.get(self.check_token_url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_password_recovery_link_generation(self):
+        """Verifies password reset requests generate confirmation signals."""
+        payload = {
+            "email": "admin@zevron.com"
+        }
+        response = self.client.post(self.password_reset_url, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("recovery link has been generated", response.data["message"])
