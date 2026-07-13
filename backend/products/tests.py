@@ -214,10 +214,10 @@ class CheckoutEngineTests(APITestCase):
         # Request catalog without location
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 2)
+        self.assertEqual(len(response.data["results"]), 2)
         
         # Since company_a has a custom contract pricing of $85.00 for product_1, it should apply
-        prod_1_data = next(item for item in response.data if item["sku"] == "SKU-ZEEE-01")
+        prod_1_data = next(item for item in response.data["results"] if item["sku"] == "SKU-ZEEE-01")
         self.assertEqual(prod_1_data["calculated_price"], "85.00")
 
     def test_catalog_retrieval_with_regional_pricing_fallback(self):
@@ -237,12 +237,50 @@ class CheckoutEngineTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         
         # Product 1 should still have contract price $85.00
-        prod_1_data = next(item for item in response.data if item["sku"] == "SKU-ZEEE-01")
+        prod_1_data = next(item for item in response.data["results"] if item["sku"] == "SKU-ZEEE-01")
         self.assertEqual(prod_1_data["calculated_price"], "85.00")
         
         # Product 2 should have regional override price $42.00 (instead of MSRP $50.00)
-        prod_2_data = next(item for item in response.data if item["sku"] == "SKU-ZEEE-02")
+        prod_2_data = next(item for item in response.data["results"] if item["sku"] == "SKU-ZEEE-02")
         self.assertEqual(prod_2_data["calculated_price"], "42.00")
+
+    def test_catalog_search(self):
+        """Verifies searching catalog by SKU or Name query works."""
+        self.client.force_authenticate(user=self.user_a)
+        url = f"{reverse('api_products_list')}?search=ZEEE-01"
+        
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(response.data["results"][0]["sku"], "SKU-ZEEE-01")
+
+    def test_catalog_category_filtering(self):
+        """Verifies filtering catalog by category slug works."""
+        from products.models import Category
+        # Assign self.product_1 to category 'Bakery'
+        bakery_cat = Category.objects.create(name="Bakery", slug="bakery")
+        self.product_1.category = bakery_cat
+        self.product_1.save()
+
+        self.client.force_authenticate(user=self.user_a)
+        url = f"{reverse('api_products_list')}?category_slug=bakery"
+        
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(response.data["results"][0]["sku"], "SKU-ZEEE-01")
+
+    def test_catalog_pagination_slicing(self):
+        """Verifies pagination parameters limit page results size."""
+        self.client.force_authenticate(user=self.user_a)
+        url = f"{reverse('api_products_list')}?page=1&page_size=1"
+        
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["page_size"], 1)
+        self.assertEqual(len(response.data["results"]), 1)
+        self.assertEqual(response.data["count"], 2) # Total matched is still 2
+        self.assertEqual(response.data["total_pages"], 2)
 
     def test_checkout_sends_invoice_email_with_pdf(self):
         """Verifies that checkout successfully dispatches a confirmation email with PDF invoice."""

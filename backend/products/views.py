@@ -234,7 +234,45 @@ class ProductCatalogListView(APIView):
                 company=user.company
             ).first()
 
-        products = Product.objects.filter(is_available=True).select_related('category')
+        # 1. Start with available catalog items
+        queryset = Product.objects.filter(is_available=True).select_related('category')
+
+        # 2. Query Search Filter (SKU or Name)
+        search_query = request.query_params.get('search')
+        if search_query:
+            from django.db.models import Q
+            queryset = queryset.filter(
+                Q(sku__icontains=search_query) | Q(name__icontains=search_query)
+            )
+
+        # 3. Category Filter
+        category_slug = request.query_params.get('category_slug')
+        if category_slug:
+            queryset = queryset.filter(category__slug=category_slug)
+
+        # 4. Count total items before slicing
+        total_count = queryset.count()
+
+        # 5. Parse Pagination Query params
+        page = 1
+        try:
+            page = int(request.query_params.get('page', 1))
+            if page < 1:
+                page = 1
+        except ValueError:
+            pass
+
+        page_size = 20
+        try:
+            page_size = int(request.query_params.get('page_size', 20))
+            if page_size < 1:
+                page_size = 20
+        except ValueError:
+            pass
+
+        start = (page - 1) * page_size
+        end = start + page_size
+        products = queryset[start:end]
         
         data = []
         for product in products:
@@ -262,4 +300,18 @@ class ProductCatalogListView(APIView):
                 "is_available": product.is_available,
             })
             
-        return Response(data, status=status.HTTP_200_OK)
+        # Build paginated response envelope
+        import math
+        total_pages = math.ceil(total_count / page_size) if total_count > 0 else 1
+        next_page = page + 1 if page < total_pages else None
+        prev_page = page - 1 if page > 1 else None
+
+        return Response({
+            "count": total_count,
+            "total_pages": total_pages,
+            "current_page": page,
+            "page_size": page_size,
+            "next_page": next_page,
+            "prev_page": prev_page,
+            "results": data
+        }, status=status.HTTP_200_OK)
