@@ -4,7 +4,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from accounts.models import Company, CompanyLocation
-from products.models import Product, Order, OrderItem, UserCustomPricing
+from products.models import Product, Order, OrderItem, UserCustomPricing, ZipCodePricing
 
 User = get_user_model()
 
@@ -199,3 +199,86 @@ class CheckoutEngineTests(APITestCase):
         
         self.product_1.refresh_from_db()
         self.assertEqual(self.product_1.stock_quantity, 50)
+
+    def test_catalog_anonymous_blocked(self):
+        """Verifies anonymous access to catalog list is rejected."""
+        url = reverse('api_products_list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_catalog_retrieval_with_contract_pricing(self):
+        """Verifies buyer retrieves the catalog with their contract price override applied."""
+        self.client.force_authenticate(user=self.user_a)
+        url = reverse('api_products_list')
+        
+        # Request catalog without location
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+        
+        # Since company_a has a custom contract pricing of $85.00 for product_1, it should apply
+        prod_1_data = next(item for item in response.data if item["sku"] == "SKU-ZEEE-01")
+        self.assertEqual(prod_1_data["calculated_price"], "85.00")
+
+    def test_catalog_retrieval_with_regional_pricing_fallback(self):
+        """Verifies regional pricing override is applied when no contract pricing exists."""
+        # Setup: Create a regional ZIP price for Product 2 (Base $50 -> Regional $42 for ZIP 39401)
+        ZipCodePricing.objects.create(
+            zip_code="39401",
+            product=self.product_2,
+            regional_price=42.00
+        )
+        
+        # Authenticate User A (company_a uses location_a which has ZIP 39401)
+        self.client.force_authenticate(user=self.user_a)
+        url = f"{reverse('api_products_list')}?location_id={self.location_a.id}"
+        
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        # Product 1 should still have contract price $85.00
+        prod_1_data = next(item for item in response.data if item["sku"] == "SKU-ZEEE-01")
+        self.assertEqual(prod_1_data["calculated_price"], "85.00")
+        
+        # Product 2 should have regional override price $42.00 (instead of MSRP $50.00)
+        prod_2_data = next(item for item in response.data if item["sku"] == "SKU-ZEEE-02")
+        self.assertEqual(prod_2_data["calculated_price"], "42.00")
+
+    def test_checkout_sends_invoice_email_with_pdf(self):
+        """Verifies that checkout successfully dispatches a confirmation email with PDF invoice."""
+        from django.core import mail
+        
+        # Clear outbox
+        mail.outbox = []
+        
+        self.client.force_authenticate(user=self.user_a)
+
+        payload = {
+            "location_id": self.location_a.id,
+            "items": [
+                {"sku": "SKU-ZEEE-01", "quantity": 1}
+            ]
+        }
+
+        response = self.client.post(self.checkout_url, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        
+        # Verify email was sent
+        self.assertEqual(len(mail.outbox), 1)
+        sent_email = mail.outbox[0]
+        
+        # Verify email headers and body
+        self.assertEqual(sent_email.to, [self.user_a.email])
+        self.assertIn("B2B Wholesale Order PO", sent_email.subject)
+        self.assertIn("Tax Exempt", sent_email.subject)
+        self.assertIn("Zevron Solutions", sent_email.body)
+        
+        # Verify PDF attachment
+        self.assertEqual(len(sent_email.attachments), 1)
+        attachment_name, attachment_content, mime_type = sent_email.attachments[0]
+        self.assertTrue(attachment_name.startswith("invoice_PO_"))
+        self.assertTrue(attachment_name.endswith(".pdf"))
+        self.assertEqual(mime_type, "application/pdf")
+        
+        # Check that PDF has content
+        self.assertGreater(len(attachment_content), 0)

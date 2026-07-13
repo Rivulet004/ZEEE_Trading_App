@@ -8,6 +8,8 @@ from django.db import transaction
 from accounts.models import CompanyLocation
 from .models import Product, Order, OrderItem
 from .utils import calculate_item_price
+from .pdf import generate_invoice_pdf
+from .notifications import send_invoice_email
 
 class ProductPriceEvaluationView(APIView):
     """Secure endpoint providing dynamic real-time contract/regional cost checking."""
@@ -146,12 +148,21 @@ class InventoryCheckoutView(APIView):
                         price_paid=line["price_paid"]
                     )
 
-                return Response({
-                    "message": "Commercial purchase order authorized successfully.",
-                    "order_id": master_order.id,
-                    "total_amount": str(master_order.total_amount),
-                    "status": master_order.status
-                }, status=status.HTTP_201_CREATED)
+            # Generate dynamic PDF and send email notification
+            try:
+                pdf_content = generate_invoice_pdf(master_order)
+                send_invoice_email(master_order, pdf_content)
+            except Exception as notification_error:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Fulfillment notification failed for PO #{master_order.id}: {str(notification_error)}")
+
+            return Response({
+                "message": "Commercial purchase order authorized successfully.",
+                "order_id": master_order.id,
+                "total_amount": str(master_order.total_amount),
+                "status": master_order.status
+            }, status=status.HTTP_201_CREATED)
 
         except CheckoutError as ce:
             return Response(
@@ -201,4 +212,54 @@ class CustomerOrderHistoryView(APIView):
                     for item in order.items.all()
                 ]
             })
+        return Response(data, status=status.HTTP_200_OK)
+
+
+class ProductCatalogListView(APIView):
+    """
+    Secure endpoint returning the master catalog list with dynamic pricing cascades
+    calculated specifically for the authenticated user and location.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        location_id = request.query_params.get('location_id')
+        
+        # Resolve user's branch location for regional pricing tier checking
+        location = None
+        if location_id:
+            location = CompanyLocation.objects.filter(
+                id=location_id,
+                company=user.company
+            ).first()
+
+        products = Product.objects.filter(is_available=True).select_related('category')
+        
+        data = []
+        for product in products:
+            calculated_price = calculate_item_price(user, location, product)
+            
+            # Resolve absolute media URL if image is present
+            image_url = None
+            if product.image:
+                image_url = request.build_absolute_uri(product.image.url)
+
+            data.append({
+                "sku": product.sku,
+                "name": product.name,
+                "description": product.description,
+                "unit_of_measure": product.unit_of_measure,
+                "base_price": str(product.base_price),
+                "calculated_price": str(calculated_price),
+                "stock_quantity": product.stock_quantity,
+                "image_url": image_url,
+                "category": {
+                    "id": product.category.id,
+                    "name": product.category.name,
+                    "slug": product.category.slug,
+                } if product.category else None,
+                "is_available": product.is_available,
+            })
+            
         return Response(data, status=status.HTTP_200_OK)
