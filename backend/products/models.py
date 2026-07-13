@@ -2,13 +2,49 @@ from django.db import models
 from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 
+class Category(models.Model):
+    """
+    Structural groupings for inventory classification.
+    Allows easy frontend catalog tab generation and search filtering.
+    """
+    name = models.CharField(max_length=100, unique=True, db_index=True)
+    slug = models.SlugField(max_length=120, unique=True, help_text="URL-friendly identifier.")
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Product Category"
+        verbose_name_plural = "Product Categories"
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
 class Product(models.Model):
     """
-    Master inventory catalog. Tracks stock keeping units (SKUs)
-    and baseline wholesale pricing parameters.
+    Master inventory catalog. Tracks stock keeping units (SKUs),
+    structural classification, visual assets, and baseline wholesale pricing parameters.
     """
     sku = models.CharField(max_length=50, unique=True, db_index=True)
     name = models.CharField(max_length=255, db_index=True)
+    
+    # Newly Integrated Relationships & Media Attributes
+    category = models.ForeignKey(
+        Category, 
+        on_delete=models.SET_Null, 
+        null=True, 
+        blank=True, 
+        related_name="products",
+        help_text="Primary classification group."
+    )
+    image = models.ImageField(
+        upload_base="products/catalog/", 
+        blank=True, 
+        null=True, 
+        help_text="Visual catalog thumbnail asset."
+    )
+    
     description = models.TextField(blank=True)
     unit_of_measure = models.CharField(max_length=50, help_text="e.g., 50lb Bag, Case of 6, Gallon")
     base_price = models.DecimalField(max_digits=12, decimal_places=2, help_text="Standard wholesale price rule fallback.")
@@ -87,7 +123,6 @@ class Order(models.Model):
         DELIVERED = 'DELIVERED', 'Fulfillment Complete'
         CANCELLED = 'CANCELLED', 'Void / Cancelled'
 
-    # Attaches the order directly to the user account profile forever
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, 
         on_delete=models.PROTECT, 
@@ -105,7 +140,6 @@ class Order(models.Model):
         db_index=True
     )
     
-    # Freeze unalterable text snapshots to protect historical data against future profile edits
     delivery_address_snapshot = models.TextField()
     sales_tax_id_snapshot = models.CharField(max_length=50)
     

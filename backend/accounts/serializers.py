@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from .models import Company, CompanyLocation
@@ -76,3 +77,14 @@ class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'company_name']
+
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """
+    Extends SimpleJWT's token pair serializer to attach the authenticated
+    user profile using the already-resolved user instance (not a second DB lookup).
+    """
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        data['user'] = UserProfileSerializer(self.user).data
+        return data

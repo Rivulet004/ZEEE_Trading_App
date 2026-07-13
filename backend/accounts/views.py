@@ -7,7 +7,11 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from django.contrib.auth.forms import PasswordResetForm
 
 # Import the new, nested B2B data translators we designed
-from .serializers import EnterpriseRegisterSerializer, UserProfileSerializer
+from .serializers import (
+    EnterpriseRegisterSerializer,
+    UserProfileSerializer,
+    CustomTokenObtainPairSerializer,
+)
 
 class EnterpriseRegisterView(APIView):
     """
@@ -41,23 +45,10 @@ class EnterpriseRegisterView(APIView):
 class CustomTokenObtainPairView(TokenObtainPairView):
     """
     Enhanced login view inheriting from SimpleJWT's native framework.
-    Validates email/username + password credentials, returning the tokens
-    alongside a serialized payload of the user profile context for immediate client caching.
+    Validates credentials and returns tokens plus the authenticated user profile
+    from the serializer's already-resolved user instance.
     """
-    def post(self, request, *args, **kwargs):
-        # Trigger parent class execution validation to verify security credentials
-        response = super().post(request, *args, **kwargs)
-        
-        if response.status_code == 200:
-            # Look up the authenticated user account instance using the validated form criteria
-            from django.contrib.auth import get_user_model
-            User = get_user_model()
-            user = User.objects.get(username=request.data.get('username'))
-            
-            # Inject serialized enterprise layout details back into the standard token dictionary
-            response.data['user'] = UserProfileSerializer(user).data
-            
-        return response
+    serializer_class = CustomTokenObtainPairSerializer
 
 
 class CheckTokenView(APIView):
@@ -87,10 +78,11 @@ class PasswordResetRequestView(APIView):
         form = PasswordResetForm(request.data)
         if form.is_valid():
             # Internal engine checks if account exists, calculates expiration tokens,
-            # and pipes the compiled recovery body out to the active email template files
+            # and pipes the compiled recovery body out to the active email template files.
+            # Protocol follows the incoming request (https when the connection is secure).
             form.save(
                 request=request,
-                use_https=False,  # Flip to True once production SSL reverse proxies are deployed
+                use_https=request.is_secure(),
                 email_template_name='registration/password_reset_email.html',
                 subject_template_name='registration/password_reset_subject.txt'
             )

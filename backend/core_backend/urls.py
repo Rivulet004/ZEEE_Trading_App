@@ -23,6 +23,7 @@ from accounts.views import (
     CheckTokenView, 
     PasswordResetRequestView
 )
+from products.views import ProductPriceEvaluationView
 
 urlpatterns = [
     # Master Django Administrative Portal Route Gateway
@@ -39,4 +40,5 @@ urlpatterns = [
          auth_views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
     path('reset/done/', 
          auth_views.PasswordResetCompleteView.as_view(), name='password_reset_complete'),
+    path('api/products/<str:sku>/price/', ProductPriceEvaluationView.as_view(), name='product_price_check'),
 ]
