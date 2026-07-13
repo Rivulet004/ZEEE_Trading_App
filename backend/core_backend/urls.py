@@ -1,0 +1,42 @@
+"""
+URL configuration for core_backend project.
+
+The `urlpatterns` list routes URLs to views. For more information please see:
+    https://docs.djangoproject.com/en/6.0/topics/http/urls/
+Examples:
+Function views
+    1. Add an import:  from my_app import views
+    2. Add a URL to urlpatterns:  path('', views.home, name='home')
+Class-based views
+    1. Add an import:  from other_app.views import Home
+    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
+Including another URLconf
+    1. Import the include() function: from django.urls import include, path
+    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
+"""
+from django.contrib import admin
+from django.urls import path
+from django.contrib.auth import views as auth_views
+from accounts.views import (
+    EnterpriseRegisterView, 
+    CustomTokenObtainPairView, 
+    CheckTokenView, 
+    PasswordResetRequestView
+)
+
+urlpatterns = [
+    # Master Django Administrative Portal Route Gateway
+    path('admin/', admin.site.urls),
+    
+    # Core Account API Endpoint Interfaces targeted by the Flutter frontend client
+    path('api/accounts/register/', EnterpriseRegisterView.as_view(), name='api_register'),
+    path('api/accounts/login/', CustomTokenObtainPairView.as_view(), name='api_login'),
+    path('api/accounts/check-token/', CheckTokenView.as_view(), name='api_check_token'),
+    path('api/accounts/password-reset/', PasswordResetRequestView.as_view(), name='api_password_reset'),
+    
+    # Native web interface handlers providing the execution screens for inputting new passwords
+    path('reset/<uidb64>/<token>/', 
+         auth_views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+    path('reset/done/', 
+         auth_views.PasswordResetCompleteView.as_view(), name='password_reset_complete'),
+]

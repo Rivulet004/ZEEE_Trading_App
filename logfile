@@ -1,0 +1,71 @@
+2026-07-13 05:34:05.824 PKT [9912] FATAL:  database files are incompatible with server
+2026-07-13 05:34:05.824 PKT [9912] DETAIL:  The data directory was initialized by PostgreSQL version 16, which is not compatible with this version 13.15.
+2026-07-12 19:39:26.527 CDT [5244] LOG:  starting PostgreSQL 13.15, compiled by Visual C++ build 1914, 64-bit
+2026-07-12 19:39:26.532 CDT [5244] LOG:  could not bind IPv6 address "::1": Permission denied
+2026-07-12 19:39:26.532 CDT [5244] HINT:  Is another postmaster already running on port 5432? If not, wait a few seconds and retry.
+2026-07-12 19:39:26.532 CDT [5244] LOG:  could not bind IPv4 address "127.0.0.1": Permission denied
+2026-07-12 19:39:26.532 CDT [5244] HINT:  Is another postmaster already running on port 5432? If not, wait a few seconds and retry.
+2026-07-12 19:39:26.533 CDT [5244] WARNING:  could not create listen socket for "localhost"
+2026-07-12 19:39:26.533 CDT [5244] FATAL:  could not create any TCP/IP sockets
+2026-07-12 19:39:26.535 CDT [5244] LOG:  database system is shut down
+2026-07-12 19:41:30.288 CDT [10628] LOG:  starting PostgreSQL 13.15, compiled by Visual C++ build 1914, 64-bit
+2026-07-12 19:41:30.293 CDT [10628] LOG:  could not bind IPv6 address "::1": Permission denied
+2026-07-12 19:41:30.293 CDT [10628] HINT:  Is another postmaster already running on port 5432? If not, wait a few seconds and retry.
+2026-07-12 19:41:30.293 CDT [10628] LOG:  could not bind IPv4 address "127.0.0.1": Permission denied
+2026-07-12 19:41:30.293 CDT [10628] HINT:  Is another postmaster already running on port 5432? If not, wait a few seconds and retry.
+2026-07-12 19:41:30.293 CDT [10628] WARNING:  could not create listen socket for "localhost"
+2026-07-12 19:41:30.293 CDT [10628] FATAL:  could not create any TCP/IP sockets
+2026-07-12 19:41:30.295 CDT [10628] LOG:  database system is shut down
+2026-07-12 19:42:28.384 CDT [5128] LOG:  starting PostgreSQL 13.15, compiled by Visual C++ build 1914, 64-bit
+2026-07-12 19:42:28.390 CDT [5128] LOG:  listening on IPv6 address "::1", port 5433
+2026-07-12 19:42:28.390 CDT [5128] LOG:  listening on IPv4 address "127.0.0.1", port 5433
+2026-07-12 19:42:28.449 CDT [19252] LOG:  database system was shut down at 2026-07-12 19:38:45 CDT
+2026-07-12 19:42:28.500 CDT [5128] LOG:  database system is ready to accept connections
+2026-07-12 19:42:42.132 CDT [3892] FATAL:  password authentication failed for user "postgres"
+2026-07-12 19:42:42.132 CDT [3892] DETAIL:  Role "postgres" does not exist.
+	Connection matched pg_hba.conf line 88: "host    all             all             ::1/128                 scram-sha-256"
+2026-07-12 19:42:45.616 CDT [1888] FATAL:  password authentication failed for user "postgres"
+2026-07-12 19:42:45.616 CDT [1888] DETAIL:  Role "postgres" does not exist.
+	Connection matched pg_hba.conf line 88: "host    all             all             ::1/128                 scram-sha-256"
+2026-07-12 19:47:01.056 CDT [5128] LOG:  background worker "logical replication launcher" (PID 19364) was terminated by exception 0xC000013A
+2026-07-12 19:47:01.056 CDT [5128] HINT:  See C include file "ntstatus.h" for a description of the hexadecimal value.
+2026-07-12 19:47:01.056 CDT [5128] LOG:  terminating any other active server processes
+2026-07-12 19:47:01.058 CDT [4600] WARNING:  terminating connection because of crash of another server process
+2026-07-12 19:47:01.058 CDT [4600] DETAIL:  The postmaster has commanded this server process to roll back the current transaction and exit, because another server process exited abnormally and possibly corrupted shared memory.
+2026-07-12 19:47:01.058 CDT [4600] HINT:  In a moment you should be able to reconnect to the database and repeat your command.
+2026-07-12 19:47:01.060 CDT [5128] LOG:  statistics collector process (PID 14828) was terminated by exception 0xC000013A
+2026-07-12 19:47:01.060 CDT [5128] HINT:  See C include file "ntstatus.h" for a description of the hexadecimal value.
+2026-07-12 19:47:01.072 CDT [5128] LOG:  received fast shutdown request
+2026-07-12 19:47:19.769 CDT [8816] LOG:  starting PostgreSQL 13.15, compiled by Visual C++ build 1914, 64-bit
+2026-07-12 19:47:19.773 CDT [8816] LOG:  listening on IPv6 address "::1", port 5433
+2026-07-12 19:47:19.773 CDT [8816] LOG:  listening on IPv4 address "127.0.0.1", port 5433
+2026-07-12 19:47:19.825 CDT [12196] LOG:  database system was interrupted; last known up at 2026-07-12 19:42:28 CDT
+2026-07-12 19:47:20.133 CDT [12196] LOG:  database system was not properly shut down; automatic recovery in progress
+2026-07-12 19:47:20.137 CDT [12196] LOG:  redo starts at 0/15CEEA8
+2026-07-12 19:47:20.137 CDT [12196] LOG:  invalid record length at 0/15CEEE0: wanted 24, got 0
+2026-07-12 19:47:20.137 CDT [12196] LOG:  redo done at 0/15CEEA8
+2026-07-12 19:47:20.236 CDT [8816] LOG:  database system is ready to accept connections
+2026-07-12 19:47:30.704 CDT [18528] FATAL:  role "postgres" does not exist
+2026-07-12 19:47:30.849 CDT [4056] FATAL:  role "postgres" does not exist
+2026-07-12 20:01:34.407 CDT [8816] LOG:  received fast shutdown request
+2026-07-12 20:01:34.412 CDT [8816] LOG:  aborting any active transactions
+2026-07-12 20:01:34.431 CDT [8816] LOG:  background worker "logical replication launcher" (PID 12728) exited with exit code 1
+2026-07-12 20:01:34.436 CDT [18128] LOG:  shutting down
+2026-07-12 20:01:34.543 CDT [8816] LOG:  database system is shut down
+2026-07-12 20:52:35.826 CDT [17184] LOG:  starting PostgreSQL 18.4 on x86_64-windows, compiled by msvc-19.44.35227, 64-bit
+2026-07-12 20:52:35.842 CDT [17184] LOG:  listening on IPv6 address "::1", port 5433
+2026-07-12 20:52:35.842 CDT [17184] LOG:  listening on IPv4 address "127.0.0.1", port 5433
+2026-07-12 20:52:36.009 CDT [18540] LOG:  database system was interrupted; last known up at 2026-07-12 20:47:26 CDT
+2026-07-12 20:52:36.562 CDT [18540] LOG:  database system was not properly shut down; automatic recovery in progress
+2026-07-12 20:52:36.571 CDT [18540] LOG:  redo starts at 0/17F13B8
+2026-07-12 20:52:36.838 CDT [18540] LOG:  invalid record length at 0/1D333F8: expected at least 24, got 0
+2026-07-12 20:52:36.839 CDT [18540] LOG:  redo done at 0/1D333D0 system usage: CPU: user: 0.01 s, system: 0.17 s, elapsed: 0.26 s
+2026-07-12 20:52:36.964 CDT [18224] LOG:  checkpoint starting: end-of-recovery immediate wait
+2026-07-12 20:52:38.311 CDT [18224] LOG:  checkpoint complete: wrote 1137 buffers (6.9%), wrote 3 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.244 s, sync=1.063 s, total=1.351 s; sync files=427, longest=0.008 s, average=0.003 s; distance=5384 kB, estimate=5384 kB; lsn=0/1D333F8, redo lsn=0/1D333F8
+2026-07-12 20:52:38.465 CDT [17184] LOG:  database system is ready to accept connections
+2026-07-12 20:57:36.346 CDT [18224] LOG:  checkpoint starting: time
+2026-07-12 20:57:43.444 CDT [18224] LOG:  checkpoint complete: wrote 64 buffers (0.4%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=6.975 s, sync=0.071 s, total=7.098 s; sync files=27, longest=0.004 s, average=0.003 s; distance=294 kB, estimate=4875 kB; lsn=0/1D7CFB8, redo lsn=0/1D7CF28
+2026-07-12 21:02:36.463 CDT [18224] LOG:  checkpoint starting: time
+2026-07-12 21:02:37.171 CDT [18224] LOG:  checkpoint complete: wrote 6 buffers (0.0%), wrote 0 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.652 s, sync=0.019 s, total=0.708 s; sync files=5, longest=0.005 s, average=0.004 s; distance=39 kB, estimate=4391 kB; lsn=0/1D86E08, redo lsn=0/1D86DB0
+2026-07-13 01:22:36.560 CDT [18224] LOG:  checkpoint starting: time
+2026-07-13 01:22:37.964 CDT [18224] LOG:  checkpoint complete: wrote 12 buffers (0.1%), wrote 0 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=1.291 s, sync=0.032 s, total=1.410 s; sync files=10, longest=0.005 s, average=0.004 s; distance=60 kB, estimate=3958 kB; lsn=0/1D95FE0, redo lsn=0/1D95F88

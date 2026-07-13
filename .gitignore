@@ -1,1 +1,13 @@
-backend/.venv
+# Python / Django ignores
+backend/.venv/
+backend/__pycache__/
+*.pyc
+backend/db.sqlite3
+backend/.env
+
+# Flutter / Dart ignores
+frontend/.dart_tool/
+frontend/.packages
+frontend/build/
+frontend/.flutter-plugins
+frontend/.flutter-plugins-dependencies
