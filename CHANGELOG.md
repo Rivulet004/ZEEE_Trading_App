@@ -16,6 +16,11 @@ All notable changes to this project will be documented in this file.
 - **PDF Invoice Billing System (Module 4):** Created a dynamic PDF compiler [pdf.py](file:///c:/Users/MBS/OneDrive/Desktop/Programming/ZEEE_Trading_app/backend/products/pdf.py) using ReportLab. It draws structured document layouts embedding legal company credentials, shipping facilities, verified Tax IDs, and purchase line-item grids.
 - **Email Invoicing Notification Engine:** Created dispatch utility [notifications.py](file:///c:/Users/MBS/OneDrive/Desktop/Programming/ZEEE_Trading_app/backend/products/notifications.py) to format B2B receipt summaries, attach PDF receipts, and trigger automated emails immediately upon successful checkout completions.
 - **Invoicing Integration Tests:** Added unit tests verifying email outbox states, PO fields, and PDF attachment compliance parameters.
+- **Mass Matrix CSV Import Gateway (Module 5):** Added custom change list actions and HTML templates to standard Django Admin portals. Operators can upload warehouse CSV sheets to bulk import or overwrite master inventory list records, regional prices, or custom corporate contract grids.
+- **Admin CSV Integration Tests:** Added unit tests verifying staff access permissions and database record updates after parsed CSV imports.
+- **CSV Audit & Row Logging System (Module 5):** Added `CSVImportLog` and `CSVImportRowError` audit models with tabular admin inlines. Row-by-row imports run in nested atomic blocks, logging line numbers and exact failure reasons for corrupt rows while committing valid records successfully.
+- **Logistics Webhook Trigger Dispatcher (Module 5):** Created `LogisticsWebhookTarget` registry to manage active URLs for logistics webhooks. Hooked status transitions in `Order.save()` to dispatch ORDER_PLACED and ORDER_STATUS_CHANGED events in background threads using `urllib.request`.
+- **Auditing & Webhook Integration Tests:** Added unit tests verifying CSV partial failures, error log parsing, order placement webhooks, and status transition webhook notifications.
 
 ### Changed
 - **Registration & Password Recovery Security Access:** Configured `permission_classes = [AllowAny]` on both `EnterpriseRegisterView` and `PasswordResetRequestView` so anonymous/logged-out users can register or initiate password recoveries.

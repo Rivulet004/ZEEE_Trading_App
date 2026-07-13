@@ -42,3 +42,55 @@ Fulfillment and Logistics Center
     )
     
     email.send(fail_silently=False)
+
+
+import urllib.request
+import json
+import threading
+
+def send_webhook_request(url, payload):
+    """Executes the HTTP POST request to the webhook receiver target URL."""
+    try:
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode('utf-8'),
+            headers={'Content-Type': 'application/json'},
+            method='POST'
+        )
+        # 3 seconds timeout to prevent blocking thread execution
+        with urllib.request.urlopen(req, timeout=3) as response:
+            pass
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Webhook dispatch failed to target URL '{url}': {str(e)}")
+
+def trigger_order_webhook(order, event_type):
+    """
+    Spawns background daemon thread to dispatch JSON order notifications 
+    to all active registered LogisticsWebhookTarget instances.
+    """
+    from products.models import LogisticsWebhookTarget
+    
+    active_targets = LogisticsWebhookTarget.objects.filter(is_active=True)
+    if not active_targets.exists():
+        return
+
+    payload = {
+        "event_type": event_type,
+        "order_id": order.id,
+        "status": order.status,
+        "company_name": order.location.company.legal_name if order.location and order.location.company else "Individual Client",
+        "delivery_target": order.location.location_name if order.location else "N/A",
+        "delivery_address_snapshot": order.delivery_address_snapshot,
+        "total_amount": str(order.total_amount),
+        "tax_amount": str(order.tax_amount),
+        "created_at": order.created_at.isoformat() if order.created_at else None
+    }
+
+    for target in active_targets:
+        threading.Thread(
+            target=send_webhook_request, 
+            args=(target.url, payload), 
+            daemon=True
+        ).start()

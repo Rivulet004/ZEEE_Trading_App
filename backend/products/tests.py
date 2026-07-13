@@ -282,3 +282,193 @@ class CheckoutEngineTests(APITestCase):
         
         # Check that PDF has content
         self.assertGreater(len(attachment_content), 0)
+
+
+class AdminCsvImportTests(APITestCase):
+    """Verifies bulk CSV matrix imports via custom Admin views."""
+
+    def setUp(self):
+        # Create a staff user to access the admin site
+        self.staff_user = User.objects.create_superuser(
+            username="admin_operator",
+            email="operator@zevron.com",
+            password="adminpassword123"
+        )
+        self.buyer_user = User.objects.create_user(
+            username="buyer_user",
+            email="buyer@zevron.com",
+            password="password123"
+        )
+        self.import_url = reverse('admin:products_import_csv')
+
+    def test_csv_import_restricted_to_staff(self):
+        """Verifies that non-staff clients are blocked from the CSV import URL."""
+        # Unauthenticated blocked
+        response = self.client.get(self.import_url)
+        self.assertEqual(response.status_code, status.HTTP_302_FOUND) # Redirects to admin login
+        
+        # Authenticated non-staff buyer blocked
+        self.client.force_login(self.buyer_user)
+        response = self.client.get(self.import_url)
+        self.assertEqual(response.status_code, status.HTTP_302_FOUND) # Redirects to admin login
+
+    def test_csv_import_catalog_updates(self):
+        """Verifies that a valid inventory CSV updates the Product database records."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.client.force_login(self.staff_user)
+
+        csv_content = (
+            "sku,name,category,unit_of_measure,base_price,stock_quantity,is_available\r\n"
+            "SKU-CSV-01,CSV Widget,Kitchen Supplies,Case of 12,120.00,10,True\r\n"
+            "SKU-CSV-02,CSV Pallet,Warehouse Supply,Pallet,500.00,5,True\r\n"
+        )
+        csv_file = SimpleUploadedFile(
+            "catalog.csv",
+            csv_content.encode("utf-8"),
+            content_type="text/csv"
+        )
+
+        response = self.client.post(self.import_url, {"csv_file": csv_file})
+        self.assertEqual(response.status_code, status.HTTP_302_FOUND) # Redirect back to change list
+
+        # Verify items were created in DB
+        prod1 = Product.objects.filter(sku="SKU-CSV-01").first()
+        self.assertIsNotNone(prod1)
+        self.assertEqual(prod1.name, "CSV Widget")
+        self.assertEqual(prod1.base_price, 120.00)
+        self.assertEqual(prod1.category.name, "Kitchen Supplies")
+        self.assertEqual(prod1.stock_quantity, 10)
+
+        prod2 = Product.objects.filter(sku="SKU-CSV-02").first()
+        self.assertIsNotNone(prod2)
+        self.assertEqual(prod2.unit_of_measure, "Pallet")
+
+    def test_csv_import_logging_on_failure(self):
+        """Verifies that CSV uploads logging errors works, supporting partial success."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from products.models import CSVImportLog, CSVImportRowError
+        self.client.force_login(self.staff_user)
+
+        # SKU-CSV-99 does not exist, and company Delta Corp does not exist.
+        csv_content = (
+            "sku,company_legal_name,negotiated_price\r\n"
+            "SKU-CSV-99,Delta Corp,120.00\r\n"
+        )
+        csv_file = SimpleUploadedFile(
+            "contracts_bad.csv",
+            csv_content.encode("utf-8"),
+            content_type="text/csv"
+        )
+
+        response = self.client.post(self.import_url, {"csv_file": csv_file})
+        self.assertEqual(response.status_code, status.HTTP_302_FOUND)
+
+        # Verify audit log was created
+        log_record = CSVImportLog.objects.filter(file_name="contracts_bad.csv").first()
+        self.assertIsNotNone(log_record)
+        self.assertEqual(log_record.status, CSVImportLog.ImportStatus.FAILED)
+        self.assertIn("0 created, 0 updated, 1 failed", log_record.summary)
+
+        # Verify row error record
+        row_error = CSVImportRowError.objects.filter(import_log=log_record).first()
+        self.assertIsNotNone(row_error)
+        self.assertEqual(row_error.line_number, 2)
+        self.assertIn("Product matching SKU 'SKU-CSV-99' does not exist", row_error.error_message)
+
+
+from unittest.mock import patch, MagicMock
+
+class WebhookNotificationTests(APITestCase):
+    """Verifies that placing orders and changing status dispatches JSON webhooks to targets."""
+
+    def setUp(self):
+        from accounts.models import Company, CompanyLocation
+        from products.models import Product, LogisticsWebhookTarget
+        
+        self.company = Company.objects.create(legal_name="Delta Logistics", corporate_email="ops@delta.com")
+        self.location = CompanyLocation.objects.create(
+            company=self.company,
+            location_name="Hattiesburg Terminal",
+            zip_code="39401",
+            delivery_address="100 Logistics Way",
+            sales_tax_id="MS-9988-EX"
+        )
+        self.user = User.objects.create_user(username="dispatcher_buyer", email="buyer@delta.com", password="password")
+        self.user.company = self.company
+        self.user.save()
+        
+        self.product = Product.objects.create(
+            sku="SKU-WEB-01",
+            name="Heavy Caster Wheel",
+            base_price=35.00,
+            stock_quantity=100
+        )
+        
+        # Setup webhook target
+        self.webhook_target = LogisticsWebhookTarget.objects.create(
+            url="https://logistics.zevron.io/api/v1/orders-receive/",
+            is_active=True
+        )
+
+    @patch('urllib.request.urlopen')
+    def test_order_placement_triggers_webhook(self, mock_urlopen):
+        """Verifies order placement creates order and dispatches ORDER_PLACED webhook."""
+        from products.models import Order
+        
+        mock_response = MagicMock()
+        mock_response.status = 200
+        mock_urlopen.return_value = mock_response
+        
+        # Simulate checkout view call or manual creation
+        order = Order.objects.create(
+            user=self.user,
+            location=self.location,
+            delivery_address_snapshot=self.location.delivery_address,
+            sales_tax_id_snapshot=self.location.sales_tax_id,
+            total_amount=35.00
+        )
+        
+        # Since webhook is in background thread, we wait briefly for thread to start/execute
+        import time
+        time.sleep(0.5)
+        
+        # Assert urllib.request.urlopen was called
+        self.assertTrue(mock_urlopen.called)
+        
+        # Assert request parameters
+        called_req = mock_urlopen.call_args[0][0]
+        self.assertEqual(called_req.full_url, self.webhook_target.url)
+        self.assertEqual(called_req.method, "POST")
+
+    @patch('urllib.request.urlopen')
+    def test_order_status_change_triggers_webhook(self, mock_urlopen):
+        """Verifies changing order status dispatches ORDER_STATUS_CHANGED webhook."""
+        from products.models import Order
+        
+        mock_response = MagicMock()
+        mock_response.status = 200
+        mock_urlopen.return_value = mock_response
+        
+        # Create order
+        order = Order.objects.create(
+            user=self.user,
+            location=self.location,
+            delivery_address_snapshot=self.location.delivery_address,
+            sales_tax_id_snapshot=self.location.sales_tax_id,
+            total_amount=35.00
+        )
+        
+        # Clear initial placement webhook call history
+        import time
+        time.sleep(0.5)
+        mock_urlopen.reset_mock()
+        
+        # Transition status
+        order.status = 'APPROVED'
+        order.save()
+        
+        time.sleep(0.5)
+        
+        self.assertTrue(mock_urlopen.called)
+        called_req = mock_urlopen.call_args[0][0]
+        self.assertEqual(called_req.full_url, self.webhook_target.url)

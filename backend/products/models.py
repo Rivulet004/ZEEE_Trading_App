@@ -157,6 +157,29 @@ class Order(models.Model):
     def __str__(self):
         return f"PO #{self.id} - {self.location.company.legal_name} ({self.created_at.strftime('%Y-%m-%d')})"
 
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        old_status = None
+        if not is_new:
+            try:
+                old_status = Order.objects.get(pk=self.pk).status
+            except Order.DoesNotExist:
+                pass
+                
+        super().save(*args, **kwargs)
+        
+        # Trigger webhook notifications
+        try:
+            from products.notifications import trigger_order_webhook
+            if is_new:
+                trigger_order_webhook(self, 'ORDER_PLACED')
+            elif old_status and old_status != self.status:
+                trigger_order_webhook(self, 'ORDER_STATUS_CHANGED')
+        except Exception as webhook_err:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to dispatch logistics webhook for PO #{self.id}: {webhook_err}")
+
 
 class OrderItem(models.Model):
     """
@@ -174,3 +197,59 @@ class OrderItem(models.Model):
 
     def __str__(self):
         return f"PO #{self.order.id} | {self.product.sku} x {self.quantity}"
+
+
+class CSVImportLog(models.Model):
+    class ImportStatus(models.TextChoices):
+        SUCCESS = 'SUCCESS', 'Completed Successfully'
+        PARTIAL = 'PARTIAL', 'Completed with Errors'
+        FAILED = 'FAILED', 'Failed Entirely'
+
+    class ImportType(models.TextChoices):
+        CATALOG = 'CATALOG', 'Product Inventory Catalog'
+        REGIONAL = 'REGIONAL', 'Regional ZIP Pricing Grid'
+        CONTRACT = 'CONTRACT', 'Corporate Contract Pricing'
+
+    file_name = models.CharField(max_length=255)
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=15, choices=ImportStatus.choices, default=ImportStatus.SUCCESS)
+    import_type = models.CharField(max_length=15, choices=ImportType.choices)
+    summary = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = "CSV Import Audit Log"
+        verbose_name_plural = "CSV Import Audit Logs"
+        ordering = ["-uploaded_at"]
+
+    def __str__(self):
+        return f"{self.get_import_type_display()} - {self.file_name} ({self.uploaded_at.strftime('%Y-%m-%d %H:%M')})"
+
+
+class CSVImportRowError(models.Model):
+    import_log = models.ForeignKey(CSVImportLog, on_delete=models.CASCADE, related_name="row_errors")
+    line_number = models.IntegerField()
+    row_data = models.TextField(help_text="Original CSV row content.")
+    error_message = models.TextField()
+
+    class Meta:
+        verbose_name = "CSV Row Import Error"
+        verbose_name_plural = "CSV Row Import Errors"
+        ordering = ["line_number"]
+
+    def __str__(self):
+        return f"Line {self.line_number}: {self.error_message[:50]}"
+
+
+class LogisticsWebhookTarget(models.Model):
+    url = models.URLField(max_length=500, unique=True, help_text="Target URL for B2B dispatch notifications.")
+    is_active = models.BooleanField(default=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Logistics Webhook Target"
+        verbose_name_plural = "Logistics Webhook Targets"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.url

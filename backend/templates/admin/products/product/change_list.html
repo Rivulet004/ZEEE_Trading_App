@@ -1,0 +1,11 @@
+{% extends "admin/change_list.html" %}
+{% load i18n %}
+
+{% block object-tools-items %}
+  <li>
+    <a href="import-csv/" class="addlink" style="background-image: none; background-color: #2c5282; font-weight: bold; color: white;">
+      {% translate 'Import CSV Matrix' %}
+    </a>
+  </li>
+  {{ block.super }}
+{% endblock %}

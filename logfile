@@ -175,3 +175,11 @@
 2026-07-13 03:13:42.490 CDT [19596] LOG:  checkpoint complete: wrote 1 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.108 s, sync=0.007 s, total=0.146 s; sync files=2, longest=0.004 s, average=0.004 s; distance=3 kB, estimate=5037 kB; lsn=0/5E60720, redo lsn=0/5E606C8
 2026-07-13 03:24:08.398 CDT [19596] LOG:  checkpoint starting: immediate force wait
 2026-07-13 03:24:08.453 CDT [19596] LOG:  checkpoint complete: wrote 3 buffers (0.0%), wrote 2 SLRU buffers; 0 WAL file(s) added, 0 removed, 1 recycled; write=0.007 s, sync=0.011 s, total=0.055 s; sync files=4, longest=0.003 s, average=0.003 s; distance=5509 kB, estimate=5509 kB; lsn=0/63C1D88, redo lsn=0/63C1D30
+2026-07-13 03:29:08.469 CDT [19596] LOG:  checkpoint starting: time
+2026-07-13 03:29:08.634 CDT [19596] LOG:  checkpoint complete: wrote 1 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.109 s, sync=0.008 s, total=0.166 s; sync files=2, longest=0.004 s, average=0.004 s; distance=3 kB, estimate=4959 kB; lsn=0/63C2CB0, redo lsn=0/63C2C58
+2026-07-13 03:36:41.619 CDT [19596] LOG:  checkpoint starting: immediate force wait
+2026-07-13 03:36:41.674 CDT [19596] LOG:  checkpoint complete: wrote 3 buffers (0.0%), wrote 2 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.012 s, sync=0.012 s, total=0.057 s; sync files=4, longest=0.004 s, average=0.003 s; distance=5606 kB, estimate=5606 kB; lsn=0/693C720, redo lsn=0/693C6C8
+2026-07-13 03:41:41.694 CDT [19596] LOG:  checkpoint starting: time
+2026-07-13 03:41:41.853 CDT [19596] LOG:  checkpoint complete: wrote 1 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.119 s, sync=0.009 s, total=0.161 s; sync files=2, longest=0.006 s, average=0.005 s; distance=3 kB, estimate=5046 kB; lsn=0/693D6B8, redo lsn=0/693D660
+2026-07-13 03:48:26.557 CDT [19596] LOG:  checkpoint starting: immediate force wait
+2026-07-13 03:48:26.841 CDT [19596] LOG:  checkpoint complete: wrote 61 buffers (0.4%), wrote 2 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.039 s, sync=0.203 s, total=0.285 s; sync files=63, longest=0.016 s, average=0.004 s; distance=6019 kB, estimate=6019 kB; lsn=0/6F1E2E8, redo lsn=0/6F1E290
