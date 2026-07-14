@@ -93,3 +93,19 @@ class PasswordResetRequestView(APIView):
             }, status=status.HTTP_200_OK)
             
         return Response(form.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CompanyLocationListView(APIView):
+    """
+    Returns all registered physical shipping locations for the user's company tenant.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not request.user.company:
+            return Response([], status=status.HTTP_200_OK)
+        
+        from .serializers import CompanyLocationSerializer
+        locations = request.user.company.locations.all()
+        serializer = CompanyLocationSerializer(locations, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)

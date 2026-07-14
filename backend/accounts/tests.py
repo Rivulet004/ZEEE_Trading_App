@@ -195,3 +195,18 @@ class AccountsSystemTests(APITestCase):
         response = self.client.post(self.password_reset_url, payload, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("recovery link has been generated", response.data["message"])
+
+    def test_list_company_locations(self):
+        """Verifies authenticated users retrieve locations list matching company tenant."""
+        self.client.force_authenticate(user=self.existing_user)
+        url = reverse('api_locations_list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["location_name"], "Hattiesburg Branch")
+
+    def test_list_company_locations_unauthenticated_blocked(self):
+        """Verifies unauthenticated locations list access is rejected."""
+        url = reverse('api_locations_list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)

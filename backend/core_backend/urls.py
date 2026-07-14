@@ -21,7 +21,8 @@ from accounts.views import (
     EnterpriseRegisterView, 
     CustomTokenObtainPairView, 
     CheckTokenView, 
-    PasswordResetRequestView
+    PasswordResetRequestView,
+    CompanyLocationListView
 )
 from products.views import ProductPriceEvaluationView, InventoryCheckoutView, CustomerOrderHistoryView, ProductCatalogListView
 
@@ -34,6 +35,7 @@ urlpatterns = [
     path('api/accounts/login/', CustomTokenObtainPairView.as_view(), name='api_login'),
     path('api/accounts/check-token/', CheckTokenView.as_view(), name='api_check_token'),
     path('api/accounts/password-reset/', PasswordResetRequestView.as_view(), name='api_password_reset'),
+    path('api/accounts/locations/', CompanyLocationListView.as_view(), name='api_locations_list'),
     
     # Native web interface handlers providing the execution screens for inputting new passwords
     path('reset/<uidb64>/<token>/', 

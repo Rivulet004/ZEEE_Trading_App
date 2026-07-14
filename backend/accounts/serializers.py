@@ -9,7 +9,7 @@ User = get_user_model()
 class CompanyLocationSerializer(serializers.ModelSerializer):
     class Meta:
         model = CompanyLocation
-        fields = ['location_name', 'delivery_address', 'zip_code', 'sales_tax_id']
+        fields = ['id', 'location_name', 'delivery_address', 'zip_code', 'sales_tax_id']
 
 
 class EnterpriseRegisterSerializer(serializers.ModelSerializer):

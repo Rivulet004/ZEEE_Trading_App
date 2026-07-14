@@ -1,12 +1,28 @@
-# Changelog: ZEEE B2B Trading App Backend
+# Changelog: ZEEE B2B Trading App
 
 All notable changes to this project will be documented in this file.
 
 ---
 
-## [Unreleased] - 2026-07-13
+## [Frontend Release] - 2026-07-14
 
 ### Added
+- **Flutter App Architecture Setup:** Configured `frontend/pubspec.yaml` incorporating `provider` (state), `dio` (networking), `flutter_secure_storage` (keychain), `shared_preferences` (cache), and `intl` (formatting).
+- **Secure JWT API Service Client:** Created [api_client.dart](file:///c:/Users/MBS/OneDrive/Desktop/Programming/ZEEE_Trading_app/frontend/lib/services/api_client.dart) implementing custom request/error interceptors. They append bearer signatures, handle automatic `/api/token/refresh/` pings, and force sign-out redirects on token expiration.
+- **B2B Session & Auth Provider:** Created [auth_provider.dart](file:///c:/Users/MBS/OneDrive/Desktop/Programming/ZEEE_Trading_app/frontend/lib/providers/auth_provider.dart) managing login exchanges, multi-step self-onboarding firms registration, and recovery link requests.
+- **Product Catalog Provider:** Created [catalog_provider.dart](file:///c:/Users/MBS/OneDrive/Desktop/Programming/ZEEE_Trading_app/frontend/lib/providers/catalog_provider.dart) loading paginated scroll lists, SKU search query strings, category chips, and order purchase logs.
+- **Shopping Cart & Facility Provider:** Created [cart_provider.dart](file:///c:/Users/MBS/OneDrive/Desktop/Programming/ZEEE_Trading_app/frontend/lib/providers/cart_provider.dart) caching branch preferences locally, tracking cart increments/decrements, and submitting PO checkouts.
+- **Authentication Screens:** Built [login_screen.dart](file:///c:/Users/MBS/OneDrive/Desktop/Programming/ZEEE_Trading_app/frontend/lib/screens/login_screen.dart), [register_screen.dart](file:///c:/Users/MBS/OneDrive/Desktop/Programming/ZEEE_Trading_app/frontend/lib/screens/register_screen.dart) (multi-step registration stepper), and [password_reset_screen.dart](file:///c:/Users/MBS/OneDrive/Desktop/Programming/ZEEE_Trading_app/frontend/lib/screens/password_reset_screen.dart).
+- **Locations & Catalog Display Screens:** Built [location_picker_screen.dart](file:///c:/Users/MBS/OneDrive/Desktop/Programming/ZEEE_Trading_app/frontend/lib/screens/location_picker_screen.dart) (branch facility lists) and [catalog_screen.dart](file:///c:/Users/MBS/OneDrive/Desktop/Programming/ZEEE_Trading_app/frontend/lib/screens/catalog_screen.dart) (high-density list grids, search, category choice chips, MSRP strike-through overlays, drawer links, and quantity increments).
+- **Checkout & History Screens:** Built [cart_screen.dart](file:///c:/Users/MBS/OneDrive/Desktop/Programming/ZEEE_Trading_app/frontend/lib/screens/cart_screen.dart) (exemption labels and PO checkouts) and [order_history_screen.dart](file:///c:/Users/MBS/OneDrive/Desktop/Programming/ZEEE_Trading_app/frontend/lib/screens/order_history_screen.dart) (status badges and invoice download notifications).
+- **Bootstrap Entry Gateway:** Wired all dependencies and multi-providers inside [main.dart](file:///c:/Users/MBS/OneDrive/Desktop/Programming/ZEEE_Trading_app/frontend/lib/main.dart) routing users dynamically.
+
+---
+
+## [Backend Release] - 2026-07-13
+
+### Added
+- **`api_locations_list` (Branch Locations Listing) Endpoint:** Implemented [CompanyLocationListView](file:///c:/Users/MBS/OneDrive/Desktop/Programming/ZEEE_Trading_app/backend/accounts/views.py#L104) mapped at `/api/accounts/locations/` returning the authenticated user's registered shipping hubs, along with unit tests.
 - **`accounts` Unit Tests:** Created a complete unit test suite in [backend/accounts/tests.py](file:///c:/Users/MBS/OneDrive/Desktop/Programming/ZEEE_Trading_app/backend/accounts/tests.py) covering B2B registration, JWT auth logins, token validations, and password reset requests.
 - **`customer_order_history` Endpoint:** Implemented [CustomerOrderHistoryView](file:///c:/Users/MBS/OneDrive/Desktop/Programming/ZEEE_Trading_app/backend/products/views.py#L156) and mapped it to the `/api/v1/orders/history/` endpoint in [backend/core_backend/urls.py](file:///c:/Users/MBS/OneDrive/Desktop/Programming/ZEEE_Trading_app/backend/core_backend/urls.py#L44) to fetch historical tenant invoices.
 - **`api_products_list` (Product Catalog Listing) Endpoint:** Implemented [ProductCatalogListView](file:///c:/Users/MBS/OneDrive/Desktop/Programming/ZEEE_Trading_app/backend/products/views.py#L207) at `/api/v1/products/` evaluating B2B dynamic pricing structures (contracts, regional ZIPs, and MSRPs) in real-time. Added support for text query searches (on SKU or Name), category slug filtering, and paginated response envelopes for optimal client infinite scroll performance.
