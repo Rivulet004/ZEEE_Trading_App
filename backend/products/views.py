@@ -315,3 +315,19 @@ class ProductCatalogListView(APIView):
             "prev_page": prev_page,
             "results": data
         }, status=status.HTTP_200_OK)
+
+
+class ProductCategoryListView(APIView):
+    """
+    Exposes a dynamic list of active product categories from the database.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from .models import Category
+        categories = Category.objects.all().order_by('name')
+        data = [
+            {"id": cat.id, "name": cat.name, "slug": cat.slug}
+            for cat in categories
+        ]
+        return Response(data, status=status.HTTP_200_OK)

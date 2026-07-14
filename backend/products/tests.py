@@ -510,3 +510,23 @@ class WebhookNotificationTests(APITestCase):
         self.assertTrue(mock_urlopen.called)
         called_req = mock_urlopen.call_args[0][0]
         self.assertEqual(called_req.full_url, self.webhook_target.url)
+
+
+class ProductCategoryListViewTests(APITestCase):
+    def setUp(self):
+        from products.models import Category
+        self.cat1 = Category.objects.create(name="Bakery", slug="bakery")
+        self.cat2 = Category.objects.create(name="Pantry", slug="pantry")
+        self.user = User.objects.create_user(username="test_buyer", password="password")
+
+    def test_list_categories(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(reverse('api_categories_list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+        self.assertEqual(response.data[0]["name"], "Bakery")
+        self.assertEqual(response.data[1]["name"], "Pantry")
+
+    def test_list_categories_unauthenticated_blocked(self):
+        response = self.client.get(reverse('api_categories_list'))
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
