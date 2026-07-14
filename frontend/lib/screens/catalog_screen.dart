@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/catalog_provider.dart';
 import '../providers/cart_provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/theme_provider.dart';
 import 'cart_screen.dart';
 import 'order_history_screen.dart';
 import 'location_picker_screen.dart';
@@ -38,7 +39,9 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
   void _loadCatalog() {
     final locationId = Provider.of<CartProvider>(context, listen: false).selectedLocation?['id'];
-    Provider.of<CatalogProvider>(context, listen: false).fetchCatalog(
+    final catalogProvider = Provider.of<CatalogProvider>(context, listen: false);
+    catalogProvider.fetchCategories();
+    catalogProvider.fetchCatalog(
       locationId: locationId,
       refresh: true,
     );
@@ -66,44 +69,49 @@ class _CatalogScreenState extends State<CatalogScreen> {
   Widget build(BuildContext context) {
     final catalogProvider = Provider.of<CatalogProvider>(context);
     final cartProvider = Provider.of<CartProvider>(context);
+    final themeProvider = Provider.of<ThemeProvider>(context);
     final selectedLoc = cartProvider.selectedLocation;
     final cartItemsCount = cartProvider.items.values.fold<int>(0, (sum, qty) => sum + qty);
 
-    // Common B2B wholesale categories
     final List<Map<String, String?>> categories = [
       {'name': 'All items', 'slug': null},
-      {'name': 'Bakery', 'slug': 'bakery'},
-      {'name': 'Pantry', 'slug': 'pantry'},
-      {'name': 'Dairy', 'slug': 'dairy'},
-      {'name': 'Produce', 'slug': 'produce'},
-      {'name': 'Packaging', 'slug': 'packaging'},
+      ...catalogProvider.categories.map((cat) => {
+        'name': cat['name'] as String?,
+        'slug': cat['slug'] as String?,
+      })
     ];
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A), // Slate 900
+      backgroundColor: themeProvider.canvas,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
               'Wholesale Catalog',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
             ),
             if (selectedLoc != null)
               Text(
                 'Shipping to: ${selectedLoc['location_name']}',
-                style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 11),
+                style: TextStyle(color: themeProvider.primaryAccent, fontSize: 11, fontWeight: FontWeight.bold),
               ),
           ],
         ),
         actions: [
+          // Theme Toggle Button in Header
+          IconButton(
+            icon: Icon(
+              themeProvider.isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+            ),
+            onPressed: () => themeProvider.toggleTheme(),
+          ),
           // Cart notification badge
           Stack(
             alignment: Alignment.center,
             children: [
               IconButton(
-                icon: const Icon(Icons.shopping_cart_outlined, color: Colors.white),
+                icon: const Icon(Icons.shopping_cart_outlined),
                 onPressed: () {
                   Navigator.push(
                     context,
@@ -117,8 +125,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
                   top: 4,
                   child: Container(
                     padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFEF4444),
+                    decoration: BoxDecoration(
+                      color: themeProvider.isDark ? themeProvider.errorColor : themeProvider.secondaryAccent,
                       shape: BoxShape.circle,
                     ),
                     constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
@@ -132,40 +140,39 @@ class _CatalogScreenState extends State<CatalogScreen> {
             ],
           ),
         ],
-        iconTheme: const IconThemeData(color: Colors.white),
       ),
       drawer: Drawer(
-        backgroundColor: const Color(0xFF0F172A),
+        backgroundColor: themeProvider.canvas,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             DrawerHeader(
-              decoration: const BoxDecoration(color: Color(0xFF1E293B)),
+              decoration: BoxDecoration(color: themeProvider.surface),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  const Icon(Icons.business, color: Color(0xFF38BDF8), size: 40),
+                  Icon(Icons.business, color: themeProvider.primaryAccent, size: 40),
                   const SizedBox(height: 12),
                   Text(
-                    Provider.of<AuthProvider>(context).userProfile?['company_name'] ?? 'B2B Wholesale Portal',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                    Provider.of<AuthProvider>(context).userProfile?['company_name'] ?? 'ZEEE Trading Portal',
+                    style: TextStyle(color: themeProvider.textPrimary, fontWeight: FontWeight.bold, fontSize: 18),
                   ),
                   Text(
                     Provider.of<AuthProvider>(context).userProfile?['username'] ?? '',
-                    style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                    style: TextStyle(color: themeProvider.textSecondary, fontSize: 13),
                   ),
                 ],
               ),
             ),
             ListTile(
-              leading: const Icon(Icons.storefront, color: Colors.white),
-              title: const Text('Product Catalog', style: TextStyle(color: Colors.white)),
+              leading: Icon(Icons.storefront, color: themeProvider.textPrimary),
+              title: Text('Product Catalog', style: TextStyle(color: themeProvider.textPrimary)),
               onTap: () => Navigator.pop(context),
             ),
             ListTile(
-              leading: const Icon(Icons.place_outlined, color: Colors.white),
-              title: const Text('Change Location Hub', style: TextStyle(color: Colors.white)),
+              leading: Icon(Icons.place_outlined, color: themeProvider.textPrimary),
+              title: Text('Change Location Hub', style: TextStyle(color: themeProvider.textPrimary)),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.pushReplacement(
@@ -175,8 +182,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.receipt_long_outlined, color: Colors.white),
-              title: const Text('Invoice & PO History', style: TextStyle(color: Colors.white)),
+              leading: Icon(Icons.receipt_long_outlined, color: themeProvider.textPrimary),
+              title: Text('Invoice & PO History', style: TextStyle(color: themeProvider.textPrimary)),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
@@ -186,10 +193,10 @@ class _CatalogScreenState extends State<CatalogScreen> {
               },
             ),
             const Spacer(),
-            const Divider(color: Color(0xFF334155)),
+            Divider(color: themeProvider.isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
             ListTile(
-              leading: const Icon(Icons.logout_outlined, color: Color(0xFFFCA5A5)),
-              title: const Text('Sign Out Session', style: TextStyle(color: Color(0xFFFCA5A5))),
+              leading: Icon(Icons.logout_outlined, color: themeProvider.errorColor),
+              title: Text('Sign Out Session', style: TextStyle(color: themeProvider.errorColor)),
               onTap: _logout,
             ),
             const SizedBox(height: 20),
@@ -203,14 +210,14 @@ class _CatalogScreenState extends State<CatalogScreen> {
             padding: const EdgeInsets.all(12.0),
             child: TextField(
               controller: _searchController,
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: themeProvider.textPrimary),
               decoration: InputDecoration(
                 hintText: 'Search SKU or name...',
-                hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
-                prefixIcon: const Icon(Icons.search, color: Color(0xFF94A3B8)),
+                hintStyle: TextStyle(color: themeProvider.textSecondary),
+                prefixIcon: Icon(Icons.search, color: themeProvider.textSecondary),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(Icons.clear, color: Color(0xFF94A3B8)),
+                        icon: Icon(Icons.clear, color: themeProvider.textSecondary),
                         onPressed: () {
                           _searchController.clear();
                           catalogProvider.updateSearchQuery('', selectedLoc?['id']);
@@ -218,15 +225,15 @@ class _CatalogScreenState extends State<CatalogScreen> {
                       )
                     : null,
                 enabledBorder: OutlineInputBorder(
-                  borderSide: const BorderSide(color: Color(0xFF334155)),
+                  borderSide: BorderSide(color: themeProvider.isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderSide: const BorderSide(color: Color(0xFF38BDF8)),
+                  borderSide: BorderSide(color: themeProvider.primaryAccent, width: 2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 filled: true,
-                fillColor: const Color(0xFF1E293B),
+                fillColor: themeProvider.surface,
               ),
               onChanged: (val) {
                 catalogProvider.updateSearchQuery(val, selectedLoc?['id']);
@@ -252,10 +259,12 @@ class _CatalogScreenState extends State<CatalogScreen> {
                     onSelected: (_) {
                       catalogProvider.updateCategoryFilter(cat['slug'], selectedLoc?['id']);
                     },
-                    selectedColor: const Color(0xFF0284C7),
-                    backgroundColor: const Color(0xFF1E293B),
+                    selectedColor: themeProvider.primaryAccent,
+                    backgroundColor: themeProvider.surface,
                     labelStyle: TextStyle(
-                      color: isSelected ? Colors.white : const Color(0xFF94A3B8),
+                      color: isSelected 
+                          ? (themeProvider.isDark ? Colors.black : Colors.white) 
+                          : themeProvider.textSecondary,
                       fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                     ),
                     shape: RoundedRectangleBorder(
@@ -272,11 +281,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
           // 3. Main Catalog Grid
           Expanded(
             child: catalogProvider.isLoading && catalogProvider.products.isEmpty
-                ? const Center(child: CircularProgressIndicator(color: Color(0xFF38BDF8)))
+                ? Center(child: CircularProgressIndicator(color: themeProvider.primaryAccent))
                 : catalogProvider.errorMessage != null
-                    ? Center(child: Text('Error: ${catalogProvider.errorMessage}', style: const TextStyle(color: Colors.redAccent)))
+                    ? Center(child: Text('Error: ${catalogProvider.errorMessage}', style: TextStyle(color: themeProvider.errorColor)))
                     : catalogProvider.products.isEmpty
-                        ? const Center(child: Text('No wholesale products match your query.', style: TextStyle(color: Color(0xFF94A3B8))))
+                        ? Center(child: Text('No wholesale products match your query.', style: TextStyle(color: themeProvider.textSecondary)))
                         : GridView.builder(
                             controller: _scrollController,
                             padding: const EdgeInsets.all(12),
@@ -297,7 +306,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                               final stockLimit = prod['stock_quantity'] ?? 0;
 
                               return Card(
-                                color: const Color(0xFF1E293B),
+                                color: themeProvider.surface,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -306,7 +315,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                                     Expanded(
                                       child: Container(
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFF334155),
+                                          color: themeProvider.isDark ? const Color(0xFF2E2E33) : const Color(0xFFE2E8F0),
                                           borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
                                           image: prod['image_url'] != null
                                               ? DecorationImage(
@@ -316,7 +325,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                                               : null,
                                         ),
                                         child: prod['image_url'] == null
-                                            ? const Icon(Icons.image_outlined, color: Colors.white24, size: 40)
+                                            ? Icon(Icons.image_outlined, color: themeProvider.textSecondary.withOpacity(0.3), size: 40)
                                             : null,
                                       ),
                                     ),
@@ -329,12 +338,12 @@ class _CatalogScreenState extends State<CatalogScreen> {
                                             prod['name'] ?? '',
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                            style: TextStyle(color: themeProvider.textPrimary, fontWeight: FontWeight.bold, fontSize: 14),
                                           ),
                                           const SizedBox(height: 2),
                                           Text(
                                             'SKU: ${prod['sku']}',
-                                            style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                                            style: TextStyle(color: themeProvider.textSecondary, fontSize: 11),
                                           ),
                                           const SizedBox(height: 6),
                                           
@@ -343,38 +352,38 @@ class _CatalogScreenState extends State<CatalogScreen> {
                                             children: [
                                               Text(
                                                 '\$${calcPrice.toStringAsFixed(2)}',
-                                                style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold, fontSize: 15),
+                                                style: TextStyle(color: themeProvider.primaryAccent, fontWeight: FontWeight.bold, fontSize: 15),
                                               ),
                                               const SizedBox(width: 6),
                                               if (isDiscounted) ...[
                                                 Text(
                                                   '\$${basePrice.toStringAsFixed(2)}',
-                                                  style: const TextStyle(
-                                                    color: Color(0xFF94A3B8),
+                                                  style: TextStyle(
+                                                    color: themeProvider.textSecondary,
                                                     decoration: TextDecoration.lineThrough,
                                                     fontSize: 12,
                                                   ),
                                                 ),
                                                 const SizedBox(width: 4),
-                                                const Icon(Icons.bolt, color: Color(0xFFEAB308), size: 14), // contract rate tag
+                                                Icon(Icons.bolt, color: themeProvider.isDark ? const Color(0xFF00FFC2) : const Color(0xFFF97316), size: 14),
                                               ]
                                             ],
                                           ),
                                           const SizedBox(height: 2),
                                           Text(
                                             'Unit: ${prod['unit_of_measure']}',
-                                            style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                                            style: TextStyle(color: themeProvider.textSecondary, fontSize: 11),
                                           ),
                                           const SizedBox(height: 8),
 
                                           // Cart Controllers / Incrementors
                                           stockLimit == 0
-                                              ? const Center(
+                                              ? Center(
                                                   child: Padding(
-                                                    padding: EdgeInsets.symmetric(vertical: 8.0),
+                                                    padding: const EdgeInsets.symmetric(vertical: 8.0),
                                                     child: Text(
                                                       'OUT OF STOCK',
-                                                      style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.bold, fontSize: 12),
+                                                      style: TextStyle(color: themeProvider.errorColor, fontWeight: FontWeight.bold, fontSize: 12),
                                                     ),
                                                   ),
                                                 )
@@ -383,14 +392,14 @@ class _CatalogScreenState extends State<CatalogScreen> {
                                                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                                       children: [
                                                         IconButton(
-                                                          icon: const Icon(Icons.remove_circle_outline, color: Color(0xFF38BDF8), size: 28),
+                                                          icon: Icon(Icons.remove_circle_outline, color: themeProvider.primaryAccent, size: 28),
                                                           padding: EdgeInsets.zero,
                                                           constraints: const BoxConstraints(),
                                                           onPressed: () => cartProvider.removeFromCart(prod['sku']),
                                                         ),
-                                                        Text('$qtyInCart', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+                                                        Text('$qtyInCart', style: TextStyle(color: themeProvider.textPrimary, fontWeight: FontWeight.bold, fontSize: 15)),
                                                         IconButton(
-                                                          icon: const Icon(Icons.add_circle_outline, color: Color(0xFF38BDF8), size: 28),
+                                                          icon: Icon(Icons.add_circle_outline, color: themeProvider.primaryAccent, size: 28),
                                                           padding: EdgeInsets.zero,
                                                           constraints: const BoxConstraints(),
                                                           onPressed: () => cartProvider.addToCart(prod['sku'], calcPrice, stockLimit),
@@ -402,11 +411,13 @@ class _CatalogScreenState extends State<CatalogScreen> {
                                                       child: ElevatedButton(
                                                         onPressed: () => cartProvider.addToCart(prod['sku'], calcPrice, stockLimit),
                                                         style: ElevatedButton.styleFrom(
-                                                          backgroundColor: const Color(0xFF334155),
+                                                          backgroundColor: themeProvider.isDark ? const Color(0xFF2E2E33) : const Color(0xFFE2E8F0),
+                                                          foregroundColor: themeProvider.textPrimary,
                                                           padding: const EdgeInsets.symmetric(vertical: 8),
                                                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                                          elevation: 0,
                                                         ),
-                                                        child: const Text('Add to Cart', style: TextStyle(color: Colors.white, fontSize: 12)),
+                                                        child: const Text('Add to Cart', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                                                       ),
                                                     )
                                         ],

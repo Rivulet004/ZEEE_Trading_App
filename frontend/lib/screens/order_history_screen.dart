@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/catalog_provider.dart';
+import '../providers/theme_provider.dart';
 import 'package:intl/intl.dart';
 
 class OrderHistoryScreen extends StatefulWidget {
@@ -19,32 +20,35 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
     });
   }
 
-  Color _getStatusColor(String status) {
+  Color _getStatusColor(String status, ThemeProvider theme) {
     switch (status.toUpperCase()) {
       case 'PENDING':
         return const Color(0xFFF59E0B); // Amber 500
       case 'APPROVED':
-        return const Color(0xFF3B82F6); // Blue 500
+        return theme.isDark ? const Color(0xFF00FFC2) : const Color(0xFF1E3A8A);
       case 'SHIPPED':
         return const Color(0xFF8B5CF6); // Purple 500
       case 'DELIVERED':
         return const Color(0xFF10B981); // Emerald 500
       default:
-        return const Color(0xFF94A3B8); // Slate 500
+        return theme.textSecondary;
     }
   }
 
-  void _simulateInvoiceDownload(BuildContext context, int orderId) {
+  void _simulateInvoiceDownload(BuildContext context, int orderId, ThemeProvider themeProvider) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.download_done, color: Color(0xFF34D399)),
+            Icon(Icons.download_done, color: themeProvider.isDark ? themeProvider.primaryAccent : Colors.green),
             const SizedBox(width: 12),
-            Text('Invoice PO #$orderId PDF archived to device downloads.', style: const TextStyle(fontWeight: FontWeight.w600)),
+            Text(
+              'Invoice PO #$orderId PDF archived to device downloads.', 
+              style: TextStyle(fontWeight: FontWeight.bold, color: themeProvider.textPrimary),
+            ),
           ],
         ),
-        backgroundColor: const Color(0xFF1E293B),
+        backgroundColor: themeProvider.surface,
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -53,24 +57,23 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     final catalogProvider = Provider.of<CatalogProvider>(context);
+    final themeProvider = Provider.of<ThemeProvider>(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A), // Slate 900
+      backgroundColor: themeProvider.canvas,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B),
-        title: const Text('Invoice & PO History', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        iconTheme: const IconThemeData(color: Colors.white),
+        title: const Text('Invoice & PO History'),
       ),
       body: catalogProvider.isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF38BDF8)))
+          ? Center(child: CircularProgressIndicator(color: themeProvider.primaryAccent))
           : catalogProvider.orderHistory.isEmpty
-              ? const Center(
+              ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.history_toggle_off, size: 64, color: Color(0xFF334155)),
-                      SizedBox(height: 16),
-                      Text('No purchase orders recorded yet.', style: TextStyle(color: Color(0xFF94A3B8))),
+                      Icon(Icons.history_toggle_off, size: 64, color: themeProvider.textSecondary.withOpacity(0.3)),
+                      const SizedBox(height: 16),
+                      Text('No purchase orders recorded yet.', style: TextStyle(color: themeProvider.textSecondary)),
                     ],
                   ),
                 )
@@ -97,13 +100,18 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                     final List<dynamic> items = order['items'] ?? [];
 
                     return Card(
-                      color: const Color(0xFF1E293B),
+                      color: themeProvider.surface,
                       margin: const EdgeInsets.only(bottom: 16),
                       child: Theme(
-                        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                        data: Theme.of(context).copyWith(
+                          dividerColor: Colors.transparent,
+                          colorScheme: ColorScheme.dark(
+                            primary: themeProvider.textPrimary,
+                          ),
+                        ),
                         child: ExpansionTile(
-                          iconColor: Colors.white,
-                          collapsedIconColor: Colors.white,
+                          iconColor: themeProvider.textPrimary,
+                          collapsedIconColor: themeProvider.textPrimary,
                           title: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -112,18 +120,18 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                                 children: [
                                   Text(
                                     'PO #$orderId',
-                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                                    style: TextStyle(color: themeProvider.textPrimary, fontWeight: FontWeight.bold, fontSize: 16),
                                   ),
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                     decoration: BoxDecoration(
-                                      color: _getStatusColor(status).withOpacity(0.1),
-                                      border: Border.all(color: _getStatusColor(status), width: 0.5),
+                                      color: _getStatusColor(status, themeProvider).withOpacity(0.1),
+                                      border: Border.all(color: _getStatusColor(status, themeProvider), width: 0.5),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
                                       status.toUpperCase(),
-                                      style: TextStyle(color: _getStatusColor(status), fontSize: 10, fontWeight: FontWeight.bold),
+                                      style: TextStyle(color: _getStatusColor(status, themeProvider), fontSize: 10, fontWeight: FontWeight.bold),
                                     ),
                                   )
                                 ],
@@ -131,7 +139,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                               const SizedBox(height: 6),
                               Text(
                                 dateFormatted,
-                                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                                style: TextStyle(color: themeProvider.textSecondary, fontSize: 12),
                               ),
                             ],
                           ),
@@ -145,36 +153,36 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                                     'Hub: $deliveryTarget',
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(color: Colors.white70, fontSize: 13),
+                                    style: TextStyle(color: themeProvider.textPrimary.withOpacity(0.8), fontSize: 13),
                                   ),
                                 ),
                                 Text(
                                   '\$${total.toStringAsFixed(2)}',
-                                  style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold, fontSize: 16),
+                                  style: TextStyle(color: themeProvider.primaryAccent, fontWeight: FontWeight.bold, fontSize: 16),
                                 ),
                               ],
                             ),
                           ),
                           children: [
-                            const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 16.0),
-                              child: Divider(color: Color(0xFF334155)),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                              child: Divider(color: themeProvider.isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
                             ),
                             
                             // Delivery Address snapshot
                             ListTile(
                               dense: true,
-                              title: const Text('DELIVERY ADDRESS SNAPSHOT', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 10, fontWeight: FontWeight.bold)),
+                              title: Text('DELIVERY ADDRESS SNAPSHOT', style: TextStyle(color: themeProvider.textSecondary, fontSize: 10, fontWeight: FontWeight.bold)),
                               subtitle: Text(
                                 order['delivery_address_snapshot'] ?? '',
-                                style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.3),
+                                style: TextStyle(color: themeProvider.textPrimary.withOpacity(0.9), fontSize: 13, height: 1.3),
                               ),
                             ),
                             
                             // Items list header
-                            const Padding(
-                              padding: EdgeInsets.only(left: 16.0, top: 8.0),
-                              child: Text('ORDER ITEMS', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 10, fontWeight: FontWeight.bold)),
+                            Padding(
+                              padding: const EdgeInsets.only(left: 16.0, top: 8.0),
+                              child: Text('ORDER ITEMS', style: TextStyle(color: themeProvider.textSecondary, fontSize: 10, fontWeight: FontWeight.bold)),
                             ),
 
                             // Items loop
@@ -186,9 +194,9 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                               
                               return ListTile(
                                 dense: true,
-                                title: Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                                subtitle: Text('SKU: $sku | Qty: $qty', style: const TextStyle(color: Color(0xFF94A3B8))),
-                                trailing: Text('\$${(price * qty).toStringAsFixed(2)}', style: const TextStyle(color: Colors.white)),
+                                title: Text(name, style: TextStyle(color: themeProvider.textPrimary, fontWeight: FontWeight.bold)),
+                                subtitle: Text('SKU: $sku | Qty: $qty', style: TextStyle(color: themeProvider.textSecondary)),
+                                trailing: Text('\$${(price * qty).toStringAsFixed(2)}', style: TextStyle(color: themeProvider.textPrimary, fontWeight: FontWeight.w600)),
                               );
                             }),
 
@@ -196,12 +204,12 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                             Padding(
                               padding: const EdgeInsets.all(16.0),
                               child: OutlinedButton.icon(
-                                onPressed: () => _simulateInvoiceDownload(context, orderId),
+                                onPressed: () => _simulateInvoiceDownload(context, orderId, themeProvider),
                                 icon: const Icon(Icons.download, size: 18),
                                 label: const Text('DOWNLOAD PDF INVOICE', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                                 style: OutlinedButton.styleFrom(
-                                  foregroundColor: const Color(0xFF38BDF8),
-                                  side: const BorderSide(color: Color(0xFF0284C7)),
+                                  foregroundColor: themeProvider.primaryAccent,
+                                  side: BorderSide(color: themeProvider.primaryAccent),
                                   padding: const EdgeInsets.symmetric(vertical: 12),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                                 ),

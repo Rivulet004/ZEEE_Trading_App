@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/cart_provider.dart';
+import '../providers/theme_provider.dart';
 import 'catalog_screen.dart';
 
 class LocationPickerScreen extends StatefulWidget {
@@ -34,19 +35,15 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
   @override
   Widget build(BuildContext context) {
     final cartProvider = Provider.of<CartProvider>(context);
+    final themeProvider = Provider.of<ThemeProvider>(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A), // Slate 900
+      backgroundColor: themeProvider.canvas,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B),
-        title: const Text(
-          'Select Shipping Hub',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        elevation: 0,
+        title: const Text('Select Shipping Hub'),
       ),
       body: cartProvider.isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF38BDF8)))
+          ? Center(child: CircularProgressIndicator(color: themeProvider.primaryAccent))
           : cartProvider.errorMessage != null
               ? Center(
                   child: Padding(
@@ -54,28 +51,31 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.error_outline, size: 60, color: Colors.redAccent),
+                        Icon(Icons.error_outline, size: 60, color: themeProvider.errorColor),
                         const SizedBox(height: 16),
                         Text(
                           'Error loading facility targets: ${cartProvider.errorMessage}',
                           textAlign: TextAlign.center,
-                          style: const TextStyle(color: Colors.white),
+                          style: TextStyle(color: themeProvider.textPrimary),
                         ),
                         const SizedBox(height: 24),
                         ElevatedButton(
                           onPressed: () => cartProvider.fetchLocations(),
-                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0284C7)),
-                          child: const Text('RETRY CONNECTION', style: TextStyle(color: Colors.white)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: themeProvider.primaryAccent,
+                            foregroundColor: themeProvider.isDark ? Colors.black : Colors.white,
+                          ),
+                          child: const Text('RETRY CONNECTION', style: TextStyle(fontWeight: FontWeight.bold)),
                         )
                       ],
                     ),
                   ),
                 )
               : cartProvider.locations.isEmpty
-                  ? const Center(
+                  ? Center(
                       child: Text(
                         'No physical branch facilities found for your company.',
-                        style: TextStyle(color: Colors.white),
+                        style: TextStyle(color: themeProvider.textPrimary),
                       ),
                     )
                   : Column(
@@ -83,10 +83,10 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                       children: [
                         Container(
                           padding: const EdgeInsets.all(20),
-                          color: const Color(0xFF1E293B),
-                          child: const Text(
+                          color: themeProvider.surface,
+                          child: Text(
                             'Please select the shipping hub for this order session. Your regional wholesale contracts and tax exemptions will be loaded automatically.',
-                            style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13, height: 1.4),
+                            style: TextStyle(color: themeProvider.textSecondary, fontSize: 13, height: 1.4),
                           ),
                         ),
                         Expanded(
@@ -98,11 +98,11 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                               final isSelected = cartProvider.selectedLocation?['id'] == loc['id'];
 
                               return Card(
-                                color: const Color(0xFF1E293B),
+                                color: themeProvider.surface,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
                                   side: BorderSide(
-                                    color: isSelected ? const Color(0xFF38BDF8) : Colors.transparent,
+                                    color: isSelected ? themeProvider.primaryAccent : Colors.transparent,
                                     width: 1.5,
                                   ),
                                 ),
@@ -114,7 +114,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                                     padding: const EdgeInsets.all(16.0),
                                     child: Row(
                                       children: [
-                                        const Icon(Icons.place, color: Color(0xFF38BDF8), size: 36),
+                                        Icon(Icons.place, color: themeProvider.primaryAccent, size: 36),
                                         const SizedBox(width: 16),
                                         Expanded(
                                           child: Column(
@@ -122,8 +122,8 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                                             children: [
                                               Text(
                                                 loc['location_name'] ?? 'Facility',
-                                                style: const TextStyle(
-                                                  color: Colors.white,
+                                                style: TextStyle(
+                                                  color: themeProvider.textPrimary,
                                                   fontWeight: FontWeight.bold,
                                                   fontSize: 16,
                                                 ),
@@ -131,26 +131,26 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                                               const SizedBox(height: 6),
                                               Text(
                                                 loc['delivery_address'] ?? '',
-                                                style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 13),
+                                                style: TextStyle(color: themeProvider.textPrimary.withOpacity(0.8), fontSize: 13),
                                               ),
                                               const SizedBox(height: 4),
                                               Row(
                                                 children: [
                                                   Text(
                                                     'ZIP: ${loc['zip_code'] ?? ''}',
-                                                    style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                                                    style: TextStyle(color: themeProvider.textSecondary, fontSize: 12),
                                                   ),
                                                   const SizedBox(width: 12),
                                                   Text(
                                                     'Tax ID: ${loc['sales_tax_id'] ?? ''}',
-                                                    style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 12, fontWeight: FontWeight.w600),
+                                                    style: TextStyle(color: themeProvider.primaryAccent, fontSize: 12, fontWeight: FontWeight.bold),
                                                   ),
                                                 ],
                                               ),
                                             ],
                                           ),
                                         ),
-                                        const Icon(Icons.chevron_right, color: Color(0xFF94A3B8)),
+                                        Icon(Icons.chevron_right, color: themeProvider.textSecondary),
                                       ],
                                     ),
                                   ),

@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/cart_provider.dart';
 import '../providers/catalog_provider.dart';
+import '../providers/theme_provider.dart';
 
 class CartScreen extends StatelessWidget {
   const CartScreen({super.key});
 
-  void _processCheckout(BuildContext context, CartProvider cartProvider) async {
+  void _processCheckout(BuildContext context, CartProvider cartProvider, ThemeProvider themeProvider) async {
     final success = await cartProvider.checkout();
 
     if (success && context.mounted) {
@@ -14,17 +15,20 @@ class CartScreen extends StatelessWidget {
         context: context,
         barrierDismissible: false,
         builder: (context) => AlertDialog(
-          backgroundColor: const Color(0xFF1E293B),
-          title: const Row(
+          backgroundColor: themeProvider.surface,
+          title: Row(
             children: [
-              Icon(Icons.check_circle_outline, color: Color(0xFF10B981), size: 30),
-              SizedBox(width: 12),
-              Text('PO Authorized', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              Icon(Icons.check_circle_outline, color: themeProvider.isDark ? themeProvider.primaryAccent : Colors.green, size: 30),
+              const SizedBox(width: 12),
+              Text(
+                'PO Authorized', 
+                style: TextStyle(color: themeProvider.textPrimary, fontWeight: FontWeight.bold),
+              ),
             ],
           ),
-          content: const Text(
-            'Your purchase order has been successfully locked in and committed. Your commercial tax-exempt PDF invoice has been compiled and emailed to your primary contact inbox.',
-            style: TextStyle(color: Color(0xFF94A3B8), height: 1.4),
+          content: Text(
+            'Your purchase order has been successfully locked in and committed. Your ZEEE Trading tax-exempt PDF invoice has been compiled and emailed to your primary contact inbox.',
+            style: TextStyle(color: themeProvider.textSecondary, height: 1.4),
           ),
           actions: [
             ElevatedButton(
@@ -32,8 +36,11 @@ class CartScreen extends StatelessWidget {
                 Navigator.pop(context); // Close dialog
                 Navigator.pop(context); // Return to catalog
               },
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0284C7)),
-              child: const Text('OK', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: themeProvider.primaryAccent,
+                foregroundColor: themeProvider.isDark ? Colors.black : Colors.white,
+              ),
+              child: const Text('OK', style: TextStyle(fontWeight: FontWeight.bold)),
             )
           ],
         ),
@@ -45,23 +52,22 @@ class CartScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final cartProvider = Provider.of<CartProvider>(context);
     final catalogProvider = Provider.of<CatalogProvider>(context);
+    final themeProvider = Provider.of<ThemeProvider>(context);
     final cartSKUs = cartProvider.items.keys.toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A), // Slate 900
+      backgroundColor: themeProvider.canvas,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B),
-        title: const Text('Review Order Cart', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        iconTheme: const IconThemeData(color: Colors.white),
+        title: const Text('Review Order Cart'),
       ),
       body: cartProvider.items.isEmpty
-          ? const Center(
+          ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.shopping_cart_outlined, size: 64, color: Color(0xFF334155)),
-                  SizedBox(height: 16),
-                  Text('Your cart is currently empty.', style: TextStyle(color: Color(0xFF94A3B8))),
+                  Icon(Icons.shopping_cart_outlined, size: 64, color: themeProvider.textSecondary.withOpacity(0.3)),
+                  const SizedBox(height: 16),
+                  Text('Your cart is currently empty.', style: TextStyle(color: themeProvider.textSecondary)),
                 ],
               ),
             )
@@ -71,10 +77,10 @@ class CartScreen extends StatelessWidget {
                 if (cartProvider.selectedLocation != null)
                   Container(
                     padding: const EdgeInsets.all(16),
-                    color: const Color(0xFF1E293B),
+                    color: themeProvider.surface,
                     child: Row(
                       children: [
-                        const Icon(Icons.local_shipping_outlined, color: Color(0xFF38BDF8)),
+                        Icon(Icons.local_shipping_outlined, color: themeProvider.primaryAccent),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
@@ -82,13 +88,13 @@ class CartScreen extends StatelessWidget {
                             children: [
                               Text(
                                 'Shipping Target: ${cartProvider.selectedLocation!['location_name']}',
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                                style: TextStyle(color: themeProvider.textPrimary, fontWeight: FontWeight.bold, fontSize: 13),
                               ),
                               Text(
                                 cartProvider.selectedLocation!['delivery_address'],
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                                style: TextStyle(color: themeProvider.textSecondary, fontSize: 12),
                               ),
                             ],
                           ),
@@ -118,7 +124,7 @@ class CartScreen extends StatelessWidget {
                       final stockLimit = prodDetails?['stock_quantity'] ?? 999;
 
                       return Card(
-                        color: const Color(0xFF1E293B),
+                        color: themeProvider.surface,
                         margin: const EdgeInsets.only(bottom: 12),
                         child: Padding(
                           padding: const EdgeInsets.all(14.0),
@@ -130,17 +136,17 @@ class CartScreen extends StatelessWidget {
                                   children: [
                                     Text(
                                       name,
-                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                                      style: TextStyle(color: themeProvider.textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
                                       'SKU: $sku | Unit: $uom',
-                                      style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                                      style: TextStyle(color: themeProvider.textSecondary, fontSize: 11),
                                     ),
                                     const SizedBox(height: 6),
                                     Text(
                                       '\$${price.toStringAsFixed(2)} / unit',
-                                      style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.w600, fontSize: 14),
+                                      style: TextStyle(color: themeProvider.primaryAccent, fontWeight: FontWeight.bold, fontSize: 14),
                                     ),
                                   ],
                                 ),
@@ -148,12 +154,12 @@ class CartScreen extends StatelessWidget {
                               Row(
                                 children: [
                                   IconButton(
-                                    icon: const Icon(Icons.remove_circle_outline, color: Color(0xFF94A3B8)),
+                                    icon: Icon(Icons.remove_circle_outline, color: themeProvider.textSecondary),
                                     onPressed: () => cartProvider.removeFromCart(sku),
                                   ),
-                                  Text('$qty', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                  Text('$qty', style: TextStyle(color: themeProvider.textPrimary, fontWeight: FontWeight.bold)),
                                   IconButton(
-                                    icon: const Icon(Icons.add_circle_outline, color: Color(0xFF38BDF8)),
+                                    icon: Icon(Icons.add_circle_outline, color: themeProvider.primaryAccent),
                                     onPressed: () => cartProvider.addToCart(sku, price, stockLimit),
                                   ),
                                 ],
@@ -169,9 +175,9 @@ class CartScreen extends StatelessWidget {
                 // Financial summary card
                 Container(
                   padding: const EdgeInsets.all(20),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF1E293B),
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                  decoration: BoxDecoration(
+                    color: themeProvider.surface,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -180,8 +186,8 @@ class CartScreen extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Subtotal Balance', style: TextStyle(color: Color(0xFF94A3B8))),
-                          Text('\$${cartProvider.subtotal.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white)),
+                          Text('Subtotal Balance', style: TextStyle(color: themeProvider.textSecondary)),
+                          Text('\$${cartProvider.subtotal.toStringAsFixed(2)}', style: TextStyle(color: themeProvider.textPrimary)),
                         ],
                       ),
                       const SizedBox(height: 10),
@@ -192,35 +198,42 @@ class CartScreen extends StatelessWidget {
                         children: [
                           Row(
                             children: [
-                              const Text('Sales Tax', style: TextStyle(color: Color(0xFF94A3B8))),
+                              Text('Sales Tax', style: TextStyle(color: themeProvider.textSecondary)),
                               const SizedBox(width: 6),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF10B981).withOpacity(0.1),
-                                  border: Border.all(color: const Color(0xFF10B981), width: 0.5),
+                                  color: (themeProvider.isDark ? themeProvider.primaryAccent : themeProvider.secondaryAccent).withOpacity(0.1),
+                                  border: Border.all(color: themeProvider.isDark ? themeProvider.primaryAccent : themeProvider.secondaryAccent, width: 0.5),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
-                                child: const Text('EXEMPT', style: TextStyle(color: Color(0xFF34D399), fontSize: 9, fontWeight: FontWeight.bold)),
+                                child: Text(
+                                  'EXEMPT', 
+                                  style: TextStyle(
+                                    color: themeProvider.isDark ? themeProvider.primaryAccent : themeProvider.secondaryAccent, 
+                                    fontSize: 9, 
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ),
                             ],
                           ),
-                          const Text('\$0.00', style: TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold)),
+                          Text('\$0.00', style: TextStyle(color: themeProvider.isDark ? themeProvider.primaryAccent : themeProvider.secondaryAccent, fontWeight: FontWeight.bold)),
                         ],
                       ),
-                      const Divider(color: Color(0xFF334155), height: 24),
+                      Divider(color: themeProvider.isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0), height: 24),
 
                       // Grand total line
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
+                          Text(
                             'Grand Total PO',
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                            style: TextStyle(color: themeProvider.textPrimary, fontWeight: FontWeight.bold, fontSize: 16),
                           ),
                           Text(
                             '\$${cartProvider.total.toStringAsFixed(2)}',
-                            style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold, fontSize: 20),
+                            style: TextStyle(color: themeProvider.primaryAccent, fontWeight: FontWeight.bold, fontSize: 20),
                           ),
                         ],
                       ),
@@ -230,24 +243,25 @@ class CartScreen extends StatelessWidget {
                         Text(
                           cartProvider.errorMessage!,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(color: Color(0xFFFCA5A5), fontSize: 13),
+                          style: TextStyle(color: themeProvider.errorColor, fontSize: 13),
                         ),
                         const SizedBox(height: 12),
                       ],
 
                       // Submit button
                       cartProvider.isLoading
-                          ? const Center(child: CircularProgressIndicator(color: Color(0xFF38BDF8)))
+                          ? Center(child: CircularProgressIndicator(color: themeProvider.primaryAccent))
                           : ElevatedButton(
-                              onPressed: () => _processCheckout(context, cartProvider),
+                              onPressed: () => _processCheckout(context, cartProvider, themeProvider),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF0284C7),
+                                backgroundColor: themeProvider.primaryAccent,
+                                foregroundColor: themeProvider.isDark ? Colors.black : Colors.white,
                                 padding: const EdgeInsets.symmetric(vertical: 16),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                               ),
                               child: const Text(
                                 'AUTHORIZE PURCHASE ORDER',
-                                style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold, letterSpacing: 1),
+                                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, letterSpacing: 1),
                               ),
                             ),
                     ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/theme_provider.dart';
 
 class PasswordResetScreen extends StatefulWidget {
   const PasswordResetScreen({super.key});
@@ -34,13 +35,12 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
+    final themeProvider = Provider.of<ThemeProvider>(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A), // Slate 900
+      backgroundColor: themeProvider.canvas,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B),
-        title: const Text('Reset Access Key', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        iconTheme: const IconThemeData(color: Colors.white),
+        title: const Text('Reset Access Key'),
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -50,27 +50,28 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Icon(Icons.mark_email_read_outlined, size: 80, color: Color(0xFF38BDF8)),
+                    Icon(Icons.mark_email_read_outlined, size: 80, color: themeProvider.primaryAccent),
                     const SizedBox(height: 24),
-                    const Text(
+                    Text(
                       'Link Dispatched!',
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: themeProvider.textPrimary),
                     ),
                     const SizedBox(height: 16),
                     Text(
                       'If this email matches a registered corporate client, check your inbox (or backend terminal output) for the cryptographic link to select a new password.',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 14, color: Color(0xFF94A3B8)),
+                      style: TextStyle(fontSize: 14, color: themeProvider.textSecondary),
                     ),
                     const SizedBox(height: 32),
                     ElevatedButton(
                       onPressed: () => Navigator.pop(context),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0284C7),
+                        backgroundColor: themeProvider.primaryAccent,
+                        foregroundColor: themeProvider.isDark ? Colors.black : Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
-                      child: const Text('RETURN TO LOGIN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      child: const Text('RETURN TO LOGIN', style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ],
                 )
@@ -80,18 +81,18 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Icon(Icons.lock_reset_outlined, size: 80, color: Color(0xFF94A3B8)),
+                      Icon(Icons.lock_reset_outlined, size: 80, color: themeProvider.textSecondary),
                       const SizedBox(height: 16),
-                      const Text(
+                      Text(
                         'Forgot Password?',
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: themeProvider.textPrimary),
                       ),
                       const SizedBox(height: 8),
-                      const Text(
+                      Text(
                         'Input your registered agent email below to receive a secure recovery signature.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 14, color: Color(0xFF94A3B8)),
+                        style: TextStyle(fontSize: 14, color: themeProvider.textSecondary),
                       ),
                       const SizedBox(height: 40),
 
@@ -99,13 +100,13 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFEF4444).withOpacity(0.1),
-                            border: Border.all(color: const Color(0xFFEF4444)),
+                            color: themeProvider.errorColor.withOpacity(0.1),
+                            border: Border.all(color: themeProvider.errorColor),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
                             authProvider.errorMessage!,
-                            style: const TextStyle(color: Color(0xFFFCA5A5), fontSize: 13),
+                            style: TextStyle(color: themeProvider.isDark ? const Color(0xFFFCA5A5) : themeProvider.errorColor, fontSize: 13),
                           ),
                         ),
                         const SizedBox(height: 20),
@@ -113,22 +114,22 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
 
                       TextFormField(
                         controller: _emailController,
-                        style: const TextStyle(color: Colors.white),
+                        style: TextStyle(color: themeProvider.textPrimary),
                         keyboardType: TextInputType.emailAddress,
                         decoration: InputDecoration(
                           labelText: 'Registered Agent Email',
-                          labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
-                          prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF94A3B8)),
+                          labelStyle: TextStyle(color: themeProvider.textSecondary),
+                          prefixIcon: Icon(Icons.email_outlined, color: themeProvider.textSecondary),
                           enabledBorder: OutlineInputBorder(
-                            borderSide: const BorderSide(color: Color(0xFF334155)),
+                            borderSide: BorderSide(color: themeProvider.isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderSide: const BorderSide(color: Color(0xFF38BDF8)),
+                            borderSide: BorderSide(color: themeProvider.primaryAccent, width: 2),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           filled: true,
-                          fillColor: const Color(0xFF1E293B),
+                          fillColor: themeProvider.surface,
                         ),
                         validator: (value) => (value == null || !value.contains('@'))
                             ? 'Please enter a valid email address'
@@ -137,15 +138,16 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
                       const SizedBox(height: 24),
 
                       authProvider.isLoading
-                          ? const Center(child: CircularProgressIndicator(color: Color(0xFF38BDF8)))
+                          ? Center(child: CircularProgressIndicator(color: themeProvider.primaryAccent))
                           : ElevatedButton(
                               onPressed: _submit,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF0284C7),
+                                backgroundColor: themeProvider.primaryAccent,
+                                foregroundColor: themeProvider.isDark ? Colors.black : Colors.white,
                                 padding: const EdgeInsets.symmetric(vertical: 14),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                               ),
-                              child: const Text('DISPATCH LINK', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                              child: const Text('DISPATCH LINK', style: TextStyle(fontWeight: FontWeight.bold)),
                             ),
                     ],
                   ),

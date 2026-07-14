@@ -4,6 +4,7 @@ import 'services/api_client.dart';
 import 'providers/auth_provider.dart';
 import 'providers/catalog_provider.dart';
 import 'providers/cart_provider.dart';
+import 'providers/theme_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/catalog_screen.dart';
 
@@ -16,6 +17,9 @@ void main() {
     MultiProvider(
       providers: [
         Provider<ApiClient>.value(value: apiClient),
+        ChangeNotifierProvider<ThemeProvider>(
+          create: (context) => ThemeProvider(),
+        ),
         ChangeNotifierProvider<AuthProvider>(
           create: (context) => AuthProvider(apiClient),
         ),
@@ -36,19 +40,11 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
     return MaterialApp(
-      title: 'ZEEVRON B2B Portal',
+      title: 'ZEEE Trading Portal',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        primaryColor: const Color(0xFF0284C7), // Sky 600
-        scaffoldBackgroundColor: const Color(0xFF0F172A), // Slate 900
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF38BDF8), // Sky 400
-          secondary: Color(0xFF0284C7),
-          surface: Color(0xFF1E293B),
-        ),
-      ),
+      theme: themeProvider.themeData,
       home: const AuthGate(),
     );
   }
@@ -80,11 +76,13 @@ class _AuthGateState extends State<AuthGate> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
     if (_checking) {
-      return const Scaffold(
-        backgroundColor: Color(0xFF0F172A),
+      return Scaffold(
+        backgroundColor: themeProvider.canvas,
         body: Center(
-          child: CircularProgressIndicator(color: Color(0xFF38BDF8)),
+          child: CircularProgressIndicator(color: themeProvider.primaryAccent),
         ),
       );
     }
