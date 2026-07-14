@@ -38,19 +38,31 @@ class _CatalogScreenState extends State<CatalogScreen> {
   }
 
   void _loadCatalog() {
-    final locationId = Provider.of<CartProvider>(context, listen: false).selectedLocation?['id'];
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final locationId = cartProvider.selectedLocation?['id'];
+    final zipCode = authProvider.isGuest ? authProvider.guestZipCode : null;
+
     final catalogProvider = Provider.of<CatalogProvider>(context, listen: false);
     catalogProvider.fetchCategories();
     catalogProvider.fetchCatalog(
       locationId: locationId,
+      zipCode: zipCode,
       refresh: true,
     );
   }
 
   void _onScroll() {
     if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
-      final locationId = Provider.of<CartProvider>(context, listen: false).selectedLocation?['id'];
-      Provider.of<CatalogProvider>(context, listen: false).loadNextPage(locationId: locationId);
+      final cartProvider = Provider.of<CartProvider>(context, listen: false);
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final locationId = cartProvider.selectedLocation?['id'];
+      final zipCode = authProvider.isGuest ? authProvider.guestZipCode : null;
+
+      Provider.of<CatalogProvider>(context, listen: false).loadNextPage(
+        locationId: locationId,
+        zipCode: zipCode,
+      );
     }
   }
 
@@ -65,10 +77,65 @@ class _CatalogScreenState extends State<CatalogScreen> {
     }
   }
 
+  bool _checkGuestAction() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (authProvider.isGuest) {
+      _showAuthPrompt();
+      return true; // Action blocked
+    }
+    return false; // Action allowed
+  }
+
+  void _showAuthPrompt() {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => AlertDialog(
+        backgroundColor: themeProvider.surface,
+        title: Row(
+          children: [
+            Icon(Icons.lock_outline, color: themeProvider.primaryAccent),
+            const SizedBox(width: 12),
+            Text(
+              'Access Restricted',
+              style: TextStyle(color: themeProvider.textPrimary, fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+          ],
+        ),
+        content: Text(
+          'Only registered corporate clients can build orders, review tax-exempt carts, or view historical invoices. Please register a firm or log in to continue.',
+          style: TextStyle(color: themeProvider.textSecondary, height: 1.4, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('CONTINUE BROWSING', style: TextStyle(color: themeProvider.textSecondary, fontWeight: FontWeight.bold)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context); // Close dialog
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const LoginScreen()),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: themeProvider.primaryAccent,
+              foregroundColor: themeProvider.isDark ? Colors.black : Colors.white,
+            ),
+            child: const Text('LOGIN / SIGNUP', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final catalogProvider = Provider.of<CatalogProvider>(context);
     final cartProvider = Provider.of<CartProvider>(context);
+    final authProvider = Provider.of<AuthProvider>(context);
     final themeProvider = Provider.of<ThemeProvider>(context);
     final selectedLoc = cartProvider.selectedLocation;
     final cartItemsCount = cartProvider.items.values.fold<int>(0, (sum, qty) => sum + qty);
@@ -91,7 +158,12 @@ class _CatalogScreenState extends State<CatalogScreen> {
               'Wholesale Catalog',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
             ),
-            if (selectedLoc != null)
+            if (authProvider.isGuest)
+              Text(
+                'Previewing ZIP: ${authProvider.guestZipCode}',
+                style: TextStyle(color: themeProvider.primaryAccent, fontSize: 11, fontWeight: FontWeight.bold),
+              )
+            else if (selectedLoc != null)
               Text(
                 'Shipping to: ${selectedLoc['location_name']}',
                 style: TextStyle(color: themeProvider.primaryAccent, fontSize: 11, fontWeight: FontWeight.bold),
@@ -113,13 +185,14 @@ class _CatalogScreenState extends State<CatalogScreen> {
               IconButton(
                 icon: const Icon(Icons.shopping_cart_outlined),
                 onPressed: () {
+                  if (_checkGuestAction()) return;
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => const CartScreen()),
                   );
                 },
               ),
-              if (cartItemsCount > 0)
+              if (cartItemsCount > 0 && !authProvider.isGuest)
                 Positioned(
                   right: 4,
                   top: 4,
@@ -155,11 +228,15 @@ class _CatalogScreenState extends State<CatalogScreen> {
                   Icon(Icons.business, color: themeProvider.primaryAccent, size: 40),
                   const SizedBox(height: 12),
                   Text(
-                    Provider.of<AuthProvider>(context).userProfile?['company_name'] ?? 'ZEEE Trading Portal',
+                    authProvider.isGuest
+                        ? 'Guest Preview'
+                        : (authProvider.userProfile?['company_name'] ?? 'ZEEE Trading Portal'),
                     style: TextStyle(color: themeProvider.textPrimary, fontWeight: FontWeight.bold, fontSize: 18),
                   ),
                   Text(
-                    Provider.of<AuthProvider>(context).userProfile?['username'] ?? '',
+                    authProvider.isGuest
+                        ? 'Shipping to ZIP: ${authProvider.guestZipCode}'
+                        : (authProvider.userProfile?['username'] ?? ''),
                     style: TextStyle(color: themeProvider.textSecondary, fontSize: 13),
                   ),
                 ],
@@ -174,6 +251,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
               leading: Icon(Icons.place_outlined, color: themeProvider.textPrimary),
               title: Text('Change Location Hub', style: TextStyle(color: themeProvider.textPrimary)),
               onTap: () {
+                if (_checkGuestAction()) return;
                 Navigator.pop(context);
                 Navigator.pushReplacement(
                   context,
@@ -185,6 +263,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
               leading: Icon(Icons.receipt_long_outlined, color: themeProvider.textPrimary),
               title: Text('Invoice & PO History', style: TextStyle(color: themeProvider.textPrimary)),
               onTap: () {
+                if (_checkGuestAction()) return;
                 Navigator.pop(context);
                 Navigator.push(
                   context,
@@ -195,8 +274,17 @@ class _CatalogScreenState extends State<CatalogScreen> {
             const Spacer(),
             Divider(color: themeProvider.isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
             ListTile(
-              leading: Icon(Icons.logout_outlined, color: themeProvider.errorColor),
-              title: Text('Sign Out Session', style: TextStyle(color: themeProvider.errorColor)),
+              leading: Icon(
+                authProvider.isGuest ? Icons.login_outlined : Icons.logout_outlined,
+                color: authProvider.isGuest ? themeProvider.primaryAccent : themeProvider.errorColor,
+              ),
+              title: Text(
+                authProvider.isGuest ? 'Sign In / Register' : 'Sign Out Session',
+                style: TextStyle(
+                  color: authProvider.isGuest ? themeProvider.primaryAccent : themeProvider.errorColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               onTap: _logout,
             ),
             const SizedBox(height: 20),
@@ -220,7 +308,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
                         icon: Icon(Icons.clear, color: themeProvider.textSecondary),
                         onPressed: () {
                           _searchController.clear();
-                          catalogProvider.updateSearchQuery('', selectedLoc?['id']);
+                          final locId = authProvider.isGuest ? null : selectedLoc?['id'];
+                          catalogProvider.updateSearchQuery('', locId);
                         },
                       )
                     : null,
@@ -236,7 +325,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
                 fillColor: themeProvider.surface,
               ),
               onChanged: (val) {
-                catalogProvider.updateSearchQuery(val, selectedLoc?['id']);
+                final locId = authProvider.isGuest ? null : selectedLoc?['id'];
+                catalogProvider.updateSearchQuery(val, locId);
               },
             ),
           ),
@@ -257,7 +347,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
                     label: Text(cat['name']!),
                     selected: isSelected,
                     onSelected: (_) {
-                      catalogProvider.updateCategoryFilter(cat['slug'], selectedLoc?['id']);
+                      final locId = authProvider.isGuest ? null : selectedLoc?['id'];
+                      catalogProvider.updateCategoryFilter(cat['slug'], locId);
                     },
                     selectedColor: themeProvider.primaryAccent,
                     backgroundColor: themeProvider.surface,
@@ -387,7 +478,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                                                     ),
                                                   ),
                                                 )
-                                              : qtyInCart > 0
+                                              : qtyInCart > 0 && !authProvider.isGuest
                                                   ? Row(
                                                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                                       children: [
@@ -395,21 +486,30 @@ class _CatalogScreenState extends State<CatalogScreen> {
                                                           icon: Icon(Icons.remove_circle_outline, color: themeProvider.primaryAccent, size: 28),
                                                           padding: EdgeInsets.zero,
                                                           constraints: const BoxConstraints(),
-                                                          onPressed: () => cartProvider.removeFromCart(prod['sku']),
+                                                          onPressed: () {
+                                                            if (_checkGuestAction()) return;
+                                                            cartProvider.removeFromCart(prod['sku']);
+                                                          },
                                                         ),
                                                         Text('$qtyInCart', style: TextStyle(color: themeProvider.textPrimary, fontWeight: FontWeight.bold, fontSize: 15)),
                                                         IconButton(
                                                           icon: Icon(Icons.add_circle_outline, color: themeProvider.primaryAccent, size: 28),
                                                           padding: EdgeInsets.zero,
                                                           constraints: const BoxConstraints(),
-                                                          onPressed: () => cartProvider.addToCart(prod['sku'], calcPrice, stockLimit),
+                                                          onPressed: () {
+                                                            if (_checkGuestAction()) return;
+                                                            cartProvider.addToCart(prod['sku'], calcPrice, stockLimit);
+                                                          },
                                                         ),
                                                       ],
                                                     )
                                                   : SizedBox(
                                                       width: double.infinity,
                                                       child: ElevatedButton(
-                                                        onPressed: () => cartProvider.addToCart(prod['sku'], calcPrice, stockLimit),
+                                                        onPressed: () {
+                                                          if (_checkGuestAction()) return;
+                                                          cartProvider.addToCart(prod['sku'], calcPrice, stockLimit);
+                                                        },
                                                         style: ElevatedButton.styleFrom(
                                                           backgroundColor: themeProvider.isDark ? const Color(0xFF2E2E33) : const Color(0xFFE2E8F0),
                                                           foregroundColor: themeProvider.textPrimary,

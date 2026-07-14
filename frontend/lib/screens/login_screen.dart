@@ -5,6 +5,7 @@ import '../providers/theme_provider.dart';
 import 'register_screen.dart';
 import 'password_reset_screen.dart';
 import 'location_picker_screen.dart';
+import 'catalog_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -40,6 +41,85 @@ class _LoginScreenState extends State<LoginScreen> {
         MaterialPageRoute(builder: (context) => const LocationPickerScreen()),
       );
     }
+  }
+
+  void _browseAsGuest() {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final formKey = GlobalKey<FormState>();
+    final zipController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: themeProvider.surface,
+        title: Text(
+          'Target Delivery ZIP',
+          style: TextStyle(color: themeProvider.textPrimary, fontWeight: FontWeight.bold),
+        ),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Enter a 5-digit shipping ZIP code to preview regional wholesale catalog rates.',
+                style: TextStyle(color: themeProvider.textSecondary, fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: zipController,
+                keyboardType: TextInputType.number,
+                maxLength: 5,
+                style: TextStyle(color: themeProvider.textPrimary),
+                decoration: InputDecoration(
+                  labelText: 'ZIP Code',
+                  labelStyle: TextStyle(color: themeProvider.textSecondary),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: themeProvider.isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: themeProvider.primaryAccent, width: 2),
+                  ),
+                  filled: true,
+                  fillColor: themeProvider.canvas,
+                ),
+                validator: (val) {
+                  if (val == null || val.length != 5 || int.tryParse(val) == null) {
+                    return 'Please enter a valid 5-digit ZIP code';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('CANCEL', style: TextStyle(color: themeProvider.textSecondary)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                final zip = zipController.text.trim();
+                Navigator.pop(context); // Close dialog
+                authProvider.loginAsGuest(zip);
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const CatalogScreen()),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: themeProvider.primaryAccent,
+              foregroundColor: themeProvider.isDark ? Colors.black : Colors.white,
+            ),
+            child: const Text('EXPLORE', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -234,6 +314,31 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        children: [
+                          Expanded(child: Divider(color: themeProvider.isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0))),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text('OR', style: TextStyle(color: themeProvider.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
+                          ),
+                          Expanded(child: Divider(color: themeProvider.isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0))),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      OutlinedButton(
+                        onPressed: _browseAsGuest,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: themeProvider.primaryAccent,
+                          side: BorderSide(color: themeProvider.primaryAccent),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        child: const Text(
+                          'BROWSE AS GUEST',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1),
+                        ),
                       ),
                     ],
                   ),

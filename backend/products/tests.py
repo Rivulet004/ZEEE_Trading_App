@@ -200,11 +200,27 @@ class CheckoutEngineTests(APITestCase):
         self.product_1.refresh_from_db()
         self.assertEqual(self.product_1.stock_quantity, 50)
 
-    def test_catalog_anonymous_blocked(self):
-        """Verifies anonymous access to catalog list is rejected."""
+    def test_catalog_anonymous_allowed(self):
+        """Verifies anonymous access to catalog list is allowed (guest bypass)."""
         url = reverse('api_products_list')
         response = self.client.get(url)
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Check that it returns base baseline MSRP prices
+        prod_1_data = next(item for item in response.data["results"] if item["sku"] == "SKU-ZEEE-01")
+        self.assertEqual(prod_1_data["calculated_price"], "100.00") # Base MSRP, not contract $85.00
+
+    def test_catalog_anonymous_with_zip_pricing(self):
+        """Verifies anonymous access applies regional ZIP code pricing override."""
+        ZipCodePricing.objects.create(
+            zip_code="39401",
+            product=self.product_2,
+            regional_price=42.00
+        )
+        url = f"{reverse('api_products_list')}?zip_code=39401"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        prod_2_data = next(item for item in response.data["results"] if item["sku"] == "SKU-ZEEE-02")
+        self.assertEqual(prod_2_data["calculated_price"], "42.00")
 
     def test_catalog_retrieval_with_contract_pricing(self):
         """Verifies buyer retrieves the catalog with their contract price override applied."""
@@ -527,6 +543,6 @@ class ProductCategoryListViewTests(APITestCase):
         self.assertEqual(response.data[0]["name"], "Bakery")
         self.assertEqual(response.data[1]["name"], "Pantry")
 
-    def test_list_categories_unauthenticated_blocked(self):
+    def test_list_categories_unauthenticated_allowed(self):
         response = self.client.get(reverse('api_categories_list'))
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)

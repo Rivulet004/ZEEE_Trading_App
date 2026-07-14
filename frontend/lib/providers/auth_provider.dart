@@ -8,17 +8,29 @@ class AuthProvider extends ChangeNotifier {
 
   bool _isLoading = false;
   bool _isAuthenticated = false;
+  bool _isGuest = false;
+  String? _guestZipCode;
   String? _errorMessage;
   Map<String, dynamic>? _userProfile;
 
   bool get isLoading => _isLoading;
   bool get isAuthenticated => _isAuthenticated;
+  bool get isGuest => _isGuest;
+  String? get guestZipCode => _guestZipCode;
   String? get errorMessage => _errorMessage;
   Map<String, dynamic>? get userProfile => _userProfile;
 
   AuthProvider(this.apiClient) {
     // Listen to token refresh failures from the api client to force a sign-out
     apiClient.onAuthFailure = logout;
+  }
+
+  void loginAsGuest(String zipCode) {
+    _isGuest = true;
+    _guestZipCode = zipCode;
+    _isAuthenticated = false;
+    _userProfile = null;
+    notifyListeners();
   }
 
   void _setLoading(bool value) {
@@ -173,6 +185,8 @@ class AuthProvider extends ChangeNotifier {
     await _storage.delete(key: 'access_token');
     await _storage.delete(key: 'refresh_token');
     _isAuthenticated = false;
+    _isGuest = false;
+    _guestZipCode = null;
     _userProfile = null;
     notifyListeners();
   }

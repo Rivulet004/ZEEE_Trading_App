@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from accounts.models import CompanyLocation
 
 from django.db import transaction
@@ -220,15 +220,16 @@ class ProductCatalogListView(APIView):
     Secure endpoint returning the master catalog list with dynamic pricing cascades
     calculated specifically for the authenticated user and location.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def get(self, request):
         user = request.user
         location_id = request.query_params.get('location_id')
+        zip_code = request.query_params.get('zip_code')
         
         # Resolve user's branch location for regional pricing tier checking
         location = None
-        if location_id:
+        if location_id and user and user.is_authenticated:
             location = CompanyLocation.objects.filter(
                 id=location_id,
                 company=user.company
@@ -276,7 +277,7 @@ class ProductCatalogListView(APIView):
         
         data = []
         for product in products:
-            calculated_price = calculate_item_price(user, location, product)
+            calculated_price = calculate_item_price(user, location, product, zip_code=zip_code)
             
             # Resolve absolute media URL if image is present
             image_url = None
@@ -321,7 +322,7 @@ class ProductCategoryListView(APIView):
     """
     Exposes a dynamic list of active product categories from the database.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def get(self, request):
         from .models import Category

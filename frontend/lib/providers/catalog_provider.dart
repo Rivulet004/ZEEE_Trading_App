@@ -55,7 +55,7 @@ class CatalogProvider extends ChangeNotifier {
   }
 
   // Queries the backend paginated products list view
-  Future<void> fetchCatalog({required int? locationId, bool refresh = false}) async {
+  Future<void> fetchCatalog({required int? locationId, String? zipCode, bool refresh = false}) async {
     if (refresh) {
       _currentPage = 1;
       _products.clear();
@@ -71,6 +71,9 @@ class CatalogProvider extends ChangeNotifier {
 
     if (locationId != null) {
       params['location_id'] = locationId;
+    }
+    if (zipCode != null) {
+      params['zip_code'] = zipCode;
     }
     if (_searchQuery.isNotEmpty) {
       params['search'] = _searchQuery;
@@ -104,10 +107,10 @@ class CatalogProvider extends ChangeNotifier {
   }
 
   // Increments catalog page and fetches the next batch of items
-  Future<void> loadNextPage({required int? locationId}) async {
+  Future<void> loadNextPage({required int? locationId, String? zipCode}) async {
     if (_currentPage < _totalPages && !_isLoading) {
       _currentPage++;
-      await fetchCatalog(locationId: locationId, refresh: false);
+      await fetchCatalog(locationId: locationId, zipCode: zipCode, refresh: false);
     }
   }
 
