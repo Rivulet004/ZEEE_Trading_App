@@ -26,6 +26,15 @@ class _CartTabState extends State<CartTab> {
   }
 
   void _processCheckout(BuildContext context, CartProvider cartProvider, ThemeProvider themeProvider) async {
+    if (cartProvider.selectedDeliveryDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Please select a scheduled delivery date to authorize checkout.'),
+          backgroundColor: themeProvider.errorColor,
+        ),
+      );
+      return;
+    }
     final success = await cartProvider.checkout();
 
     if (success && context.mounted) {
@@ -81,7 +90,7 @@ class _CartTabState extends State<CartTab> {
     final outstandingBalance = double.tryParse(authProvider.userProfile?['outstanding_balance']?.toString() ?? '0.0') ?? 0.0;
     final availableCredit = creditLimit - outstandingBalance;
     final isOverLimit = !authProvider.isGuest && cartProvider.total > availableCredit;
-    final isCheckoutDisabled = isOverLimit || cartProvider.selectedDeliveryDate == null;
+    final isCheckoutDisabled = isOverLimit;
 
     return cartProvider.items.isEmpty
         ? Center(

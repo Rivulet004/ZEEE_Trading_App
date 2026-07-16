@@ -113,6 +113,53 @@ class _DashboardTabState extends State<DashboardTab> {
 
   void _duplicateOrder(Map<String, dynamic> order) {
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
+
+    if (cartProvider.items.isNotEmpty) {
+      final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: themeProvider.surface,
+          title: Row(
+            children: [
+              Icon(Icons.warning_amber_outlined, color: themeProvider.primaryAccent, size: 28),
+              const SizedBox(width: 12),
+              Text(
+                'Overwrite Cart?',
+                style: TextStyle(color: themeProvider.textPrimary, fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ],
+          ),
+          content: Text(
+            'Duplicating this past purchase order will replace the items currently in your cart. Do you want to proceed?',
+            style: TextStyle(color: themeProvider.textSecondary, height: 1.4),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('CANCEL', style: TextStyle(color: themeProvider.textSecondary, fontWeight: FontWeight.bold)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _performDuplication(order);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: themeProvider.primaryAccent,
+                foregroundColor: themeProvider.isDark ? Colors.black : Colors.white,
+              ),
+              child: const Text('DUPLICATE', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+    } else {
+      _performDuplication(order);
+    }
+  }
+
+  void _performDuplication(Map<String, dynamic> order) {
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
     final catalogProvider = Provider.of<CatalogProvider>(context, listen: false);
 
     cartProvider.clearCart();
