@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/cart_provider.dart';
 import '../providers/theme_provider.dart';
-import 'catalog_screen.dart';
+import 'main_navigation_container.dart';
 
 class LocationPickerScreen extends StatefulWidget {
   const LocationPickerScreen({super.key});
@@ -27,7 +27,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
     if (mounted) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const CatalogScreen()),
+        MaterialPageRoute(builder: (context) => const MainNavigationContainer()),
       );
     }
   }

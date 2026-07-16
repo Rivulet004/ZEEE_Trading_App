@@ -4,21 +4,16 @@ import '../providers/catalog_provider.dart';
 import '../providers/cart_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/theme_provider.dart';
-import 'cart_screen.dart';
-import 'order_history_screen.dart';
-import 'location_picker_screen.dart';
 import 'login_screen.dart';
-import 'order_guide_screen.dart';
-import 'team_management_screen.dart';
 
-class CatalogScreen extends StatefulWidget {
-  const CatalogScreen({super.key});
+class CatalogTab extends StatefulWidget {
+  const CatalogTab({super.key});
 
   @override
-  State<CatalogScreen> createState() => _CatalogScreenState();
+  State<CatalogTab> createState() => _CatalogTabState();
 }
 
-class _CatalogScreenState extends State<CatalogScreen> {
+class _CatalogTabState extends State<CatalogTab> {
   final _scrollController = ScrollController();
   final _searchController = TextEditingController();
 
@@ -100,33 +95,30 @@ class _CatalogScreenState extends State<CatalogScreen> {
             Icon(Icons.lock_outline, color: themeProvider.primaryAccent),
             const SizedBox(width: 12),
             Text(
-              'Access Restricted',
-              style: TextStyle(color: themeProvider.textPrimary, fontWeight: FontWeight.bold, fontSize: 18),
+              'Authentication Required',
+              style: TextStyle(color: themeProvider.textPrimary, fontWeight: FontWeight.bold, fontSize: 16),
             ),
           ],
         ),
         content: Text(
-          'Only registered corporate clients can build orders, review tax-exempt carts, or view historical invoices. Please register a firm or log in to continue.',
-          style: TextStyle(color: themeProvider.textSecondary, height: 1.4, fontSize: 14),
+          'Please sign in or register to place orders, access order guides, switch location hubs, or view your corporate profile records.',
+          style: TextStyle(color: themeProvider.textSecondary, height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('CONTINUE BROWSING', style: TextStyle(color: themeProvider.textSecondary, fontWeight: FontWeight.bold)),
+            child: Text('CLOSE', style: TextStyle(color: themeProvider.textSecondary)),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context); // Close dialog
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const LoginScreen()),
-              );
+              _logout();
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: themeProvider.primaryAccent,
               foregroundColor: themeProvider.isDark ? Colors.black : Colors.white,
             ),
-            child: const Text('LOGIN / SIGNUP', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text('SIGN IN', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -140,7 +132,6 @@ class _CatalogScreenState extends State<CatalogScreen> {
     final authProvider = Provider.of<AuthProvider>(context);
     final themeProvider = Provider.of<ThemeProvider>(context);
     final selectedLoc = cartProvider.selectedLocation;
-    final cartItemsCount = cartProvider.items.values.fold<int>(0, (sum, qty) => sum + qty);
 
     final List<Map<String, String?>> categories = [
       {'name': 'All items', 'slug': null},
@@ -150,174 +141,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
       })
     ];
 
-    return Scaffold(
-      backgroundColor: themeProvider.canvas,
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Wholesale Catalog',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-            ),
-            if (authProvider.isGuest)
-              Text(
-                'Previewing ZIP: ${authProvider.guestZipCode}',
-                style: TextStyle(color: themeProvider.primaryAccent, fontSize: 11, fontWeight: FontWeight.bold),
-              )
-            else if (selectedLoc != null)
-              Text(
-                'Shipping to: ${selectedLoc['location_name']}',
-                style: TextStyle(color: themeProvider.primaryAccent, fontSize: 11, fontWeight: FontWeight.bold),
-              ),
-          ],
-        ),
-        actions: [
-          // Theme Toggle Button in Header
-          IconButton(
-            icon: Icon(
-              themeProvider.isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
-            ),
-            onPressed: () => themeProvider.toggleTheme(),
-          ),
-          // Cart notification badge
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.shopping_cart_outlined),
-                onPressed: () {
-                  if (_checkGuestAction()) return;
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const CartScreen()),
-                  );
-                },
-              ),
-              if (cartItemsCount > 0 && !authProvider.isGuest)
-                Positioned(
-                  right: 4,
-                  top: 4,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: themeProvider.isDark ? themeProvider.errorColor : themeProvider.secondaryAccent,
-                      shape: BoxShape.circle,
-                    ),
-                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                    child: Text(
-                      '$cartItemsCount',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                )
-            ],
-          ),
-        ],
-      ),
-      drawer: Drawer(
-        backgroundColor: themeProvider.canvas,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(color: themeProvider.surface),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Icon(Icons.business, color: themeProvider.primaryAccent, size: 40),
-                  const SizedBox(height: 12),
-                  Text(
-                    authProvider.isGuest
-                        ? 'Guest Preview'
-                        : (authProvider.userProfile?['company_name'] ?? 'ZEEE Trading Portal'),
-                    style: TextStyle(color: themeProvider.textPrimary, fontWeight: FontWeight.bold, fontSize: 18),
-                  ),
-                  Text(
-                    authProvider.isGuest
-                        ? 'Shipping to ZIP: ${authProvider.guestZipCode}'
-                        : (authProvider.userProfile?['username'] ?? ''),
-                    style: TextStyle(color: themeProvider.textSecondary, fontSize: 13),
-                  ),
-                ],
-              ),
-            ),
-            ListTile(
-              leading: Icon(Icons.storefront, color: themeProvider.textPrimary),
-              title: Text('Product Catalog', style: TextStyle(color: themeProvider.textPrimary)),
-              onTap: () => Navigator.pop(context),
-            ),
-            ListTile(
-              leading: Icon(Icons.assignment_outlined, color: themeProvider.textPrimary),
-              title: Text('Chef\'s Order Guide', style: TextStyle(color: themeProvider.textPrimary)),
-              onTap: () {
-                if (_checkGuestAction()) return;
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const OrderGuideScreen()),
-                );
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.place_outlined, color: themeProvider.textPrimary),
-              title: Text('Change Location Hub', style: TextStyle(color: themeProvider.textPrimary)),
-              onTap: () {
-                if (_checkGuestAction()) return;
-                Navigator.pop(context);
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => const LocationPickerScreen()),
-                );
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.receipt_long_outlined, color: themeProvider.textPrimary),
-              title: Text('Invoice & PO History', style: TextStyle(color: themeProvider.textPrimary)),
-              onTap: () {
-                if (_checkGuestAction()) return;
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const OrderHistoryScreen()),
-                );
-              },
-            ),
-            if (!authProvider.isGuest && authProvider.userProfile?['role'] == 'ADMIN')
-              ListTile(
-                leading: Icon(Icons.people_outline, color: themeProvider.textPrimary),
-                title: Text('Team Management', style: TextStyle(color: themeProvider.textPrimary)),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const TeamManagementScreen()),
-                  );
-                },
-              ),
-            const Spacer(),
-            Divider(color: themeProvider.isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
-            ListTile(
-              leading: Icon(
-                authProvider.isGuest ? Icons.login_outlined : Icons.logout_outlined,
-                color: authProvider.isGuest ? themeProvider.primaryAccent : themeProvider.errorColor,
-              ),
-              title: Text(
-                authProvider.isGuest ? 'Sign In / Register' : 'Sign Out Session',
-                style: TextStyle(
-                  color: authProvider.isGuest ? themeProvider.primaryAccent : themeProvider.errorColor,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              onTap: _logout,
-            ),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
-      body: Column(
+    return Column(
         children: [
           // 1. Search Bar Input
           Padding(
@@ -556,7 +380,6 @@ class _CatalogScreenState extends State<CatalogScreen> {
                           ),
           ),
         ],
-      ),
-    );
+      );
   }
 }

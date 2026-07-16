@@ -5,7 +5,7 @@ import '../providers/theme_provider.dart';
 import 'register_screen.dart';
 import 'password_reset_screen.dart';
 import 'location_picker_screen.dart';
-import 'catalog_screen.dart';
+import 'main_navigation_container.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -107,7 +107,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 authProvider.loginAsGuest(zip);
                 Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(builder: (context) => const CatalogScreen()),
+                  MaterialPageRoute(builder: (context) => const MainNavigationContainer()),
                 );
               }
             },

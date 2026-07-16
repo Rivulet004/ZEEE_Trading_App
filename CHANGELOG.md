@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Release 1.3.0] - 2026-07-16
+
+### Added
+- **Unified 5-Tab Navigation Container:** Unfolded layout flow into a bottom navigation portal (Dashboard, Order Guide, Catalog, Cart, Profile).
+- **Logistics Ticking Countdown:** Real-time countdown timer to warehouse route cut-offs.
+- **One-Tap Quick Reorder:** Rapid order duplicates panel for the last 3 purchase orders.
+- **Credit Progress Visuals:** Progress bars tracking corporate debt and cart limits warning levels.
+- **Branch facility switcher dropdown & Order status steppers:** Embedded directly inside the new Profile settings tab.
+
 ---
 
 ## [Release 1.2.0] - 2026-07-16

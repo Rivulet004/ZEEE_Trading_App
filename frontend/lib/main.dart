@@ -6,7 +6,7 @@ import 'providers/catalog_provider.dart';
 import 'providers/cart_provider.dart';
 import 'providers/theme_provider.dart';
 import 'screens/login_screen.dart';
-import 'screens/catalog_screen.dart';
+import 'screens/main_navigation_container.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -88,8 +88,8 @@ class _AuthGateState extends State<AuthGate> {
     }
 
     final authProvider = Provider.of<AuthProvider>(context);
-    if (authProvider.isAuthenticated) {
-      return const CatalogScreen();
+    if (authProvider.isAuthenticated || authProvider.isGuest) {
+      return const MainNavigationContainer();
     } else {
       return const LoginScreen();
     }
