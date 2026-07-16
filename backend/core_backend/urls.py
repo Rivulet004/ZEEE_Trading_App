@@ -29,7 +29,9 @@ from products.views import (
     InventoryCheckoutView, 
     CustomerOrderHistoryView, 
     ProductCatalogListView,
-    ProductCategoryListView
+    ProductCategoryListView,
+    OrderGuideListView,
+    ZipCodeDeliveryRouteView
 )
 
 urlpatterns = [
@@ -53,4 +55,6 @@ urlpatterns = [
     path('api/v1/orders/history/', CustomerOrderHistoryView.as_view(), name='customer_order_history'),
     path('api/v1/products/', ProductCatalogListView.as_view(), name='api_products_list'),
     path('api/v1/categories/', ProductCategoryListView.as_view(), name='api_categories_list'),
+    path('api/v1/products/order-guide/', OrderGuideListView.as_view(), name='api_order_guide'),
+    path('api/v1/delivery-route/', ZipCodeDeliveryRouteView.as_view(), name='api_delivery_route'),
 ]

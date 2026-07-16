@@ -9,6 +9,8 @@ class CartProvider extends ChangeNotifier {
   String? _errorMessage;
   List<dynamic> _locations = [];
   Map<String, dynamic>? _selectedLocation;
+  DateTime? _selectedDeliveryDate;
+  Map<String, dynamic>? _deliverySchedule;
 
   // Key: SKU, Value: Quantity
   final Map<String, int> _items = {};
@@ -20,6 +22,8 @@ class CartProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   List<dynamic> get locations => _locations;
   Map<String, dynamic>? get selectedLocation => _selectedLocation;
+  DateTime? get selectedDeliveryDate => _selectedDeliveryDate;
+  Map<String, dynamic>? get deliverySchedule => _deliverySchedule;
   Map<String, int> get items => _items;
 
   CartProvider(this.apiClient);
@@ -108,6 +112,8 @@ class CartProvider extends ChangeNotifier {
   void clearCart() {
     _items.clear();
     _prices.clear();
+    _selectedDeliveryDate = null;
+    _deliverySchedule = null;
     notifyListeners();
   }
 
@@ -125,17 +131,49 @@ class CartProvider extends ChangeNotifier {
   double get total => subtotal;
 
   // Submits the PO list payload to checkout view
+  Future<void> fetchDeliverySchedule(String zipCode) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final response = await apiClient.dio.get(
+        '/api/v1/delivery-route/',
+        queryParameters: {'zip_code': zipCode},
+      );
+      if (response.statusCode == 200) {
+        _deliverySchedule = response.data;
+        if (_deliverySchedule != null && _deliverySchedule!['next_available_date'] != null) {
+          _selectedDeliveryDate = DateTime.parse(_deliverySchedule!['next_available_date']);
+        }
+        notifyListeners();
+      }
+    } catch (e) {
+      _setError(e.toString());
+    }
+    _setLoading(false);
+  }
+
+  void setSelectedDeliveryDate(DateTime? date) {
+    _selectedDeliveryDate = date;
+    notifyListeners();
+  }
+
   Future<bool> checkout() async {
-    if (_selectedLocation == null || _items.isEmpty) {
+    if (_selectedLocation == null) {
       _setError("Invalid checkout parameters. Select a location first.");
+      return false;
+    }
+    if (_selectedDeliveryDate == null) {
+      _setError("Please select a scheduled delivery date from the route calendar.");
       return false;
     }
 
     _setLoading(true);
     _setError(null);
 
+    final dateStr = "${_selectedDeliveryDate!.year.toString().padLeft(4, '0')}-${_selectedDeliveryDate!.month.toString().padLeft(2, '0')}-${_selectedDeliveryDate!.day.toString().padLeft(2, '0')}";
     final payload = {
       "location_id": _selectedLocation!["id"],
+      "delivery_date": dateStr,
       "items": _items.entries.map((e) => {"sku": e.key, "quantity": e.value}).toList()
     };
 
@@ -170,5 +208,53 @@ class CartProvider extends ChangeNotifier {
       return dioErr.message ?? "Checkout transmission failed.";
     }
     return e.toString();
+  }
+
+  // Adds a new shipping location facility for the authenticated company account
+  Future<bool> addLocation({
+    required String locationName,
+    required String deliveryAddress,
+    required String zipCode,
+    required String salesTaxId,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+
+    final payload = {
+      "location_name": locationName,
+      "delivery_address": deliveryAddress,
+      "zip_code": zipCode,
+      "sales_tax_id": salesTaxId,
+    };
+
+    try {
+      final response = await apiClient.dio.post(
+        '/api/accounts/locations/',
+        data: payload,
+      );
+
+      if (response.statusCode == 201) {
+        await fetchLocations(); // Reload location lists
+        _setLoading(false);
+        return true;
+      }
+    } catch (e) {
+      if (e.toString().contains('DioException') && (e as dynamic).response != null) {
+        final res = (e as dynamic).response;
+        if (res.data is Map) {
+          final errorMap = res.data as Map;
+          final firstKey = errorMap.keys.first;
+          final firstVal = errorMap[firstKey];
+          _setError("$firstKey: ${firstVal is List ? firstVal.first : firstVal}");
+        } else {
+          _setError(e.toString());
+        }
+      } else {
+        _setError(e.toString());
+      }
+    }
+
+    _setLoading(false);
+    return false;
   }
 }

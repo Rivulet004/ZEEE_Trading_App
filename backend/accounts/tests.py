@@ -210,3 +210,35 @@ class AccountsSystemTests(APITestCase):
         url = reverse('api_locations_list')
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_create_company_location(self):
+        """Verifies authenticated users can create a new location for their company."""
+        self.client.force_authenticate(user=self.existing_user)
+        url = reverse('api_locations_list')
+        payload = {
+            "location_name": "New Houston Hub",
+            "delivery_address": "500 Cargo Rd, Houston, TX",
+            "zip_code": "77002",
+            "sales_tax_id": "TX-9988-ABC"
+        }
+        response = self.client.post(url, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["location_name"], "New Houston Hub")
+        self.assertEqual(response.data["zip_code"], "77002")
+
+        # Verify in DB
+        location = CompanyLocation.objects.get(id=response.data["id"])
+        self.assertEqual(location.company, self.existing_user.company)
+        self.assertEqual(location.zip_code, "77002")
+
+    def test_create_company_location_unauthenticated_blocked(self):
+        """Verifies unauthenticated users cannot create locations."""
+        url = reverse('api_locations_list')
+        payload = {
+            "location_name": "Unauthorized Hub",
+            "delivery_address": "500 Cargo Rd, Houston, TX",
+            "zip_code": "77002",
+            "sales_tax_id": "TX-9988-ABC"
+        }
+        response = self.client.post(url, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)

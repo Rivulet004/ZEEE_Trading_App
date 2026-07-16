@@ -32,6 +32,136 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
     }
   }
 
+  void _showAddLocationDialog() {
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final formKey = GlobalKey<FormState>();
+    
+    final nameController = TextEditingController();
+    final addressController = TextEditingController();
+    final zipController = TextEditingController();
+    final taxIdController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          backgroundColor: themeProvider.surface,
+          title: Text(
+            'Register New Shipping Hub',
+            style: TextStyle(color: themeProvider.textPrimary, fontWeight: FontWeight.bold, fontSize: 18),
+          ),
+          content: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (cartProvider.errorMessage != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: themeProvider.errorColor.withOpacity(0.1),
+                        border: Border.all(color: themeProvider.errorColor),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        cartProvider.errorMessage!,
+                        style: TextStyle(color: themeProvider.errorColor, fontSize: 12),
+                      ),
+                    ),
+                  ],
+                  TextFormField(
+                    controller: nameController,
+                    style: TextStyle(color: themeProvider.textPrimary),
+                    decoration: InputDecoration(
+                      labelText: 'Hub / Branch Name',
+                      labelStyle: TextStyle(color: themeProvider.textSecondary),
+                      enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: themeProvider.textSecondary)),
+                      focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: themeProvider.primaryAccent)),
+                    ),
+                    validator: (val) => (val == null || val.trim().isEmpty) ? 'Please enter a name' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: addressController,
+                    style: TextStyle(color: themeProvider.textPrimary),
+                    decoration: InputDecoration(
+                      labelText: 'Delivery Street Address',
+                      labelStyle: TextStyle(color: themeProvider.textSecondary),
+                      enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: themeProvider.textSecondary)),
+                      focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: themeProvider.primaryAccent)),
+                    ),
+                    validator: (val) => (val == null || val.trim().isEmpty) ? 'Please enter address' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: zipController,
+                    keyboardType: TextInputType.number,
+                    maxLength: 5,
+                    style: TextStyle(color: themeProvider.textPrimary),
+                    decoration: InputDecoration(
+                      labelText: 'ZIP Code',
+                      labelStyle: TextStyle(color: themeProvider.textSecondary),
+                      enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: themeProvider.textSecondary)),
+                      focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: themeProvider.primaryAccent)),
+                    ),
+                    validator: (val) => (val == null || val.length != 5 || int.tryParse(val) == null)
+                        ? 'Please enter valid 5-digit ZIP'
+                        : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: taxIdController,
+                    style: TextStyle(color: themeProvider.textPrimary),
+                    decoration: InputDecoration(
+                      labelText: 'Sales Tax ID',
+                      labelStyle: TextStyle(color: themeProvider.textSecondary),
+                      enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: themeProvider.textSecondary)),
+                      focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: themeProvider.primaryAccent)),
+                    ),
+                    validator: (val) => (val == null || val.trim().isEmpty) ? 'Please enter tax ID' : null,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('CANCEL', style: TextStyle(color: themeProvider.textSecondary, fontWeight: FontWeight.bold)),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (formKey.currentState!.validate()) {
+                  final success = await cartProvider.addLocation(
+                    locationName: nameController.text.trim(),
+                    deliveryAddress: addressController.text.trim(),
+                    zipCode: zipController.text.trim(),
+                    salesTaxId: taxIdController.text.trim(),
+                  );
+                  if (success) {
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                    }
+                  } else {
+                    setState(() {}); // refresh dialog error message
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: themeProvider.primaryAccent,
+                foregroundColor: themeProvider.isDark ? Colors.black : Colors.white,
+              ),
+              child: const Text('SUBMIT', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cartProvider = Provider.of<CartProvider>(context);
@@ -161,6 +291,13 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                         ),
                       ],
                     ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showAddLocationDialog,
+        backgroundColor: themeProvider.primaryAccent,
+        foregroundColor: themeProvider.isDark ? Colors.black : Colors.white,
+        icon: const Icon(Icons.add_location_alt_outlined),
+        label: const Text('ADD NEW HUB', style: TextStyle(fontWeight: FontWeight.bold)),
+      ),
     );
   }
 }

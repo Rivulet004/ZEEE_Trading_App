@@ -9,6 +9,7 @@ class CatalogProvider extends ChangeNotifier {
   List<dynamic> _products = [];
   List<dynamic> _orderHistory = [];
   List<dynamic> _categories = [];
+  List<dynamic> _orderGuide = [];
 
   int _totalCount = 0;
   int _totalPages = 1;
@@ -23,6 +24,7 @@ class CatalogProvider extends ChangeNotifier {
   List<dynamic> get products => _products;
   List<dynamic> get orderHistory => _orderHistory;
   List<dynamic> get categories => _categories;
+  List<dynamic> get orderGuide => _orderGuide;
 
   int get totalCount => _totalCount;
   int get totalPages => _totalPages;
@@ -142,5 +144,30 @@ class CatalogProvider extends ChangeNotifier {
     } catch (e) {
       _setError(e.toString());
     }
+  }
+
+  // Fetches the custom Order Guide based on order history frequencies
+  Future<void> fetchOrderGuide({required int? locationId}) async {
+    _setLoading(true);
+    _setError(null);
+
+    final Map<String, dynamic> params = {};
+    if (locationId != null) {
+      params['location_id'] = locationId;
+    }
+
+    try {
+      final response = await apiClient.dio.get(
+        '/api/v1/products/order-guide/',
+        queryParameters: params,
+      );
+      if (response.statusCode == 200) {
+        _orderGuide = response.data;
+      }
+    } catch (e) {
+      _setError(e.toString());
+    }
+
+    _setLoading(false);
   }
 }

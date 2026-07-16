@@ -137,12 +137,20 @@ class CheckoutEngineTests(APITestCase):
         # 5. Define Checkout Routing Gateway Target
         self.checkout_url = reverse('api_cart_checkout')
 
+    def _get_valid_future_date_str(self):
+        import datetime
+        delivery_date = datetime.date.today() + datetime.timedelta(days=3)
+        while delivery_date.isoweekday() > 5:
+            delivery_date += datetime.timedelta(days=1)
+        return delivery_date.isoformat()
+
     def test_successful_checkout_and_stock_deduction(self):
         """Verifies a valid cart deducts inventory and applies corporate contract pricing."""
         self.client.force_authenticate(user=self.user_a)
 
         payload = {
             "location_id": self.location_a.id,
+            "delivery_date": self._get_valid_future_date_str(),
             "items": [
                 {"sku": "SKU-ZEEE-01", "quantity": 2},
                 {"sku": "SKU-ZEEE-02", "quantity": 1}
@@ -161,6 +169,7 @@ class CheckoutEngineTests(APITestCase):
         order = Order.objects.get(id=response.data["order_id"])
         self.assertIn("Primary Mississippi Hub", order.delivery_address_snapshot)
         self.assertEqual(order.items.count(), 2)
+        self.assertIsNotNone(order.delivery_date)
 
     def test_insufficient_stock_fails_atomically(self):
         """Verifies that an out-of-stock item rejects the order and rolls back all items."""
@@ -168,6 +177,7 @@ class CheckoutEngineTests(APITestCase):
 
         payload = {
             "location_id": self.location_a.id,
+            "delivery_date": self._get_valid_future_date_str(),
             "items": [
                 {"sku": "SKU-ZEEE-01", "quantity": 1},
                 {"sku": "SKU-ZEEE-02", "quantity": 99}
@@ -188,6 +198,7 @@ class CheckoutEngineTests(APITestCase):
 
         payload = {
             "location_id": self.location_b.id,
+            "delivery_date": self._get_valid_future_date_str(),
             "items": [
                 {"sku": "SKU-ZEEE-01", "quantity": 1}
             ]
@@ -197,6 +208,57 @@ class CheckoutEngineTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertIn("Invalid or unauthorized corporate facility", response.data["error"])
         
+        self.product_1.refresh_from_db()
+        self.assertEqual(self.product_1.stock_quantity, 50)
+
+    def test_checkout_within_credit_limit(self):
+        """Verifies checking out within credit limit succeeds and updates outstanding balance."""
+        self.client.force_authenticate(user=self.user_a)
+        
+        # Set specific credit limit and balance
+        self.company_a.credit_limit = 500.00
+        self.company_a.outstanding_balance = 100.00
+        self.company_a.save()
+        
+        payload = {
+            "location_id": self.location_a.id,
+            "delivery_date": self._get_valid_future_date_str(),
+            "items": [
+                {"sku": "SKU-ZEEE-01", "quantity": 2} # 2 * $85.00 contract rate = $170.00
+            ]
+        }
+        
+        response = self.client.post(self.checkout_url, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        
+        self.company_a.refresh_from_db()
+        # Outstanding balance should be: old_balance (100.00) + order_total (170.00) = 270.00
+        self.assertEqual(self.company_a.outstanding_balance, 270.00)
+
+    def test_checkout_exceeds_credit_limit(self):
+        """Verifies checking out exceeding credit limit fails and rolls back stock deductions."""
+        self.client.force_authenticate(user=self.user_a)
+        
+        # Set specific credit limit and balance
+        self.company_a.credit_limit = 200.00
+        self.company_a.outstanding_balance = 100.00
+        self.company_a.save()
+        
+        payload = {
+            "location_id": self.location_a.id,
+            "delivery_date": self._get_valid_future_date_str(),
+            "items": [
+                {"sku": "SKU-ZEEE-01", "quantity": 2} # 2 * $85.00 contract rate = $170.00. $100 + $170 = $270 > $200.
+            ]
+        }
+        
+        response = self.client.post(self.checkout_url, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("exceeds your commercial credit limit", response.data["error"])
+        
+        # Verify db rolled back
+        self.company_a.refresh_from_db()
+        self.assertEqual(self.company_a.outstanding_balance, 100.00)
         self.product_1.refresh_from_db()
         self.assertEqual(self.product_1.stock_quantity, 50)
 
@@ -309,6 +371,7 @@ class CheckoutEngineTests(APITestCase):
 
         payload = {
             "location_id": self.location_a.id,
+            "delivery_date": self._get_valid_future_date_str(),
             "items": [
                 {"sku": "SKU-ZEEE-01", "quantity": 1}
             ]
@@ -546,3 +609,118 @@ class ProductCategoryListViewTests(APITestCase):
     def test_list_categories_unauthenticated_allowed(self):
         response = self.client.get(reverse('api_categories_list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+
+class OrderGuideListViewTests(APITestCase):
+    def setUp(self):
+        from accounts.models import Company, CompanyLocation
+        from products.models import Product, Order, OrderItem
+        
+        self.company = Company.objects.create(legal_name="Guide Test Company", corporate_email="ops@guidetest.com")
+        self.location = CompanyLocation.objects.create(
+            company=self.company,
+            location_name="Guide Hub",
+            zip_code="39401",
+            delivery_address="300 Cargo Lane"
+        )
+        self.user = User.objects.create_user(username="guide_buyer", password="password", company=self.company)
+        
+        self.prod1 = Product.objects.create(sku="SKU-G-01", name="Product A", base_price=10.00, stock_quantity=100)
+        self.prod2 = Product.objects.create(sku="SKU-G-02", name="Product B", base_price=20.00, stock_quantity=100)
+        
+        # Place orders to establish order history frequency
+        # Order 1 has prod1 and prod2
+        self.order1 = Order.objects.create(
+            user=self.user,
+            location=self.location,
+            delivery_address_snapshot="Guide Hub",
+            total_amount=30.00
+        )
+        OrderItem.objects.create(order=self.order1, product=self.prod1, quantity=10, price_paid=10.00)
+        OrderItem.objects.create(order=self.order1, product=self.prod2, quantity=1, price_paid=20.00)
+
+        # Order 2 has only prod1 (making prod1 frequency = 2, prod2 frequency = 1)
+        self.order2 = Order.objects.create(
+            user=self.user,
+            location=self.location,
+            delivery_address_snapshot="Guide Hub",
+            total_amount=10.00
+        )
+        OrderItem.objects.create(order=self.order2, product=self.prod1, quantity=5, price_paid=10.00)
+
+    def test_order_guide_unauthenticated_blocked(self):
+        url = reverse('api_order_guide')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_order_guide_sorting_by_frequency(self):
+        self.client.force_authenticate(user=self.user)
+        url = reverse('api_order_guide')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+        
+        # Product A (SKU-G-01) must be first since it was ordered in 2 separate orders
+        self.assertEqual(response.data[0]["sku"], "SKU-G-01")
+        self.assertEqual(response.data[0]["frequency_count"], 2)
+        
+        # Product B (SKU-G-02) must be second
+        self.assertEqual(response.data[1]["sku"], "SKU-G-02")
+        self.assertEqual(response.data[1]["frequency_count"], 1)
+
+
+class RouteDeliverySchedulingTests(APITestCase):
+    def setUp(self):
+        from accounts.models import Company, CompanyLocation
+        from products.models import Product, ZipCodeRouteRule
+        import datetime
+        
+        self.company = Company.objects.create(legal_name="Route Test Co", corporate_email="ops@route.com")
+        # Route 1: ZIP 39401 gets Mondays (1) and Thursdays (4) only. Cut-off 16:00.
+        self.rule_1 = ZipCodeRouteRule.objects.create(
+            zip_code="39401",
+            delivery_days="1,4",
+            cutoff_time=datetime.time(16, 0, 0)
+        )
+        self.location = CompanyLocation.objects.create(
+            company=self.company,
+            location_name="Hattiesburg Branch",
+            zip_code="39401",
+            delivery_address="300 Cargo Lane"
+        )
+        self.user = User.objects.create_user(username="route_buyer", password="password", company=self.company)
+        
+        self.product = Product.objects.create(sku="SKU-R-01", name="Product R", base_price=10.00, stock_quantity=100)
+        self.checkout_url = reverse('api_cart_checkout')
+        self.route_url = reverse('api_delivery_route')
+
+    def test_get_delivery_schedule_api(self):
+        response = self.client.get(self.route_url, {"zip_code": "39401"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["delivery_days"], [1, 4])
+        self.assertEqual(response.data["cutoff_time"], "16:00:00")
+        self.assertIn("next_available_date", response.data)
+
+    def test_checkout_invalid_weekday_fails(self):
+        self.client.force_authenticate(user=self.user)
+        # Select a Tuesday (day 2) e.g., 2026-07-21 is Tuesday
+        payload = {
+            "location_id": self.location.id,
+            "delivery_date": "2026-07-21",
+            "items": [{"sku": "SKU-R-01", "quantity": 1}]
+        }
+        response = self.client.post(self.checkout_url, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("not a valid delivery day", response.data["error"])
+
+    def test_checkout_before_next_available_fails(self):
+        self.client.force_authenticate(user=self.user)
+        # 2020-01-02 is a Thursday (valid weekday, but before next available date)
+        payload = {
+            "location_id": self.location.id,
+            "delivery_date": "2020-01-02",
+            "items": [{"sku": "SKU-R-01", "quantity": 1}]
+        }
+        response = self.client.post(self.checkout_url, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("The selected delivery date is not available", response.data["error"])

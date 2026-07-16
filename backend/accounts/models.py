@@ -10,6 +10,8 @@ class Company(models.Model):
     """
     legal_name = models.CharField(max_length=255, unique=True, db_index=True)
     corporate_email = models.EmailField(unique=True)
+    credit_limit = models.DecimalField(max_digits=12, decimal_places=2, default=10000.00, help_text="Maximum outstanding balance allowed for Net terms B2B billing.")
+    outstanding_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0.00, help_text="Current total amount of unpaid monthly invoices.")
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
 

@@ -142,6 +142,7 @@ class Order(models.Model):
     
     delivery_address_snapshot = models.TextField()
     sales_tax_id_snapshot = models.CharField(max_length=50)
+    delivery_date = models.DateField(null=True, blank=True, help_text="Scheduled route shipment date.")
     
     total_amount = models.DecimalField(max_digits=12, decimal_places=2)
     tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
@@ -253,3 +254,20 @@ class LogisticsWebhookTarget(models.Model):
 
     def __str__(self):
         return self.url
+
+
+class ZipCodeRouteRule(models.Model):
+    """
+    Defines delivery days and daily cut-off rules for a specific ZIP code area.
+    """
+    zip_code = models.CharField(max_length=10, unique=True, db_index=True)
+    # Comma-separated weekdays (1=Monday, 7=Sunday)
+    delivery_days = models.CharField(max_length=50, default="1,2,3,4,5,6,7", help_text="Comma-separated ISO weekdays (1=Monday, 7=Sunday).")
+    cutoff_time = models.TimeField(default="16:00:00", help_text="Daily order cut-off time (24h format). Past this, shipment shifts to the next route day.")
+
+    class Meta:
+        verbose_name = "ZIP Code Delivery Route Rule"
+        verbose_name_plural = "ZIP Code Delivery Route Rules"
+
+    def __str__(self):
+        return f"ZIP {self.zip_code} Delivery Days: {self.delivery_days} Cut-off: {self.cutoff_time}"

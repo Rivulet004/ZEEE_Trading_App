@@ -83,10 +83,12 @@ class EnterpriseRegisterSerializer(serializers.ModelSerializer):
 class UserProfileSerializer(serializers.ModelSerializer):
     """ Used to serve clean profile overviews down to the mobile client upon verification checks """
     company_name = serializers.CharField(source='company.legal_name', read_only=True)
+    credit_limit = serializers.DecimalField(source='company.credit_limit', max_digits=12, decimal_places=2, read_only=True)
+    outstanding_balance = serializers.DecimalField(source='company.outstanding_balance', max_digits=12, decimal_places=2, read_only=True)
     
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'company_name']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'company_name', 'credit_limit', 'outstanding_balance']
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):

@@ -2,10 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/cart_provider.dart';
 import '../providers/catalog_provider.dart';
+import '../providers/auth_provider.dart';
 import '../providers/theme_provider.dart';
 
-class CartScreen extends StatelessWidget {
+class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
+
+  @override
+  State<CartScreen> createState() => _CartScreenState();
+}
+
+class _CartScreenState extends State<CartScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final cartProvider = Provider.of<CartProvider>(context, listen: false);
+      if (cartProvider.selectedLocation != null) {
+        cartProvider.fetchDeliverySchedule(cartProvider.selectedLocation!['zip_code']);
+      }
+    });
+  }
 
   void _processCheckout(BuildContext context, CartProvider cartProvider, ThemeProvider themeProvider) async {
     final success = await cartProvider.checkout();
@@ -52,8 +69,16 @@ class CartScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final cartProvider = Provider.of<CartProvider>(context);
     final catalogProvider = Provider.of<CatalogProvider>(context);
+    final authProvider = Provider.of<AuthProvider>(context);
     final themeProvider = Provider.of<ThemeProvider>(context);
     final cartSKUs = cartProvider.items.keys.toList();
+
+    // Net Terms Credit Parameters
+    final creditLimit = double.tryParse(authProvider.userProfile?['credit_limit']?.toString() ?? '0.0') ?? 0.0;
+    final outstandingBalance = double.tryParse(authProvider.userProfile?['outstanding_balance']?.toString() ?? '0.0') ?? 0.0;
+    final availableCredit = creditLimit - outstandingBalance;
+    final isOverLimit = !authProvider.isGuest && cartProvider.total > availableCredit;
+    final isCheckoutDisabled = isOverLimit || cartProvider.selectedDeliveryDate == null;
 
     return Scaffold(
       backgroundColor: themeProvider.canvas,
@@ -221,6 +246,85 @@ class CartScreen extends StatelessWidget {
                           Text('\$0.00', style: TextStyle(color: themeProvider.isDark ? themeProvider.primaryAccent : themeProvider.secondaryAccent, fontWeight: FontWeight.bold)),
                         ],
                       ),
+                      
+                      // Available Net-Terms Credit line
+                      if (!authProvider.isGuest) ...[
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('Available Net-Terms Credit', style: TextStyle(color: themeProvider.textSecondary)),
+                            Text(
+                              '\$${availableCredit.toStringAsFixed(2)}',
+                              style: TextStyle(
+                                color: isOverLimit ? themeProvider.errorColor : (themeProvider.isDark ? themeProvider.primaryAccent : Colors.green),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+
+                      // Scheduled Delivery Date Selector (Route delivery calendars & Warehouse cut-offs)
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Scheduled Delivery', style: TextStyle(color: themeProvider.textSecondary)),
+                          InkWell(
+                            onTap: () async {
+                              final schedule = cartProvider.deliverySchedule;
+                              final nextAvailStr = schedule?['next_available_date'];
+                              final nextAvail = nextAvailStr != null ? DateTime.parse(nextAvailStr) : DateTime.now();
+                              final deliveryDays = (schedule?['delivery_days'] as List?)?.cast<int>() ?? [1, 2, 3, 4, 5, 6, 7];
+
+                              final chosenDate = await showDatePicker(
+                                context: context,
+                                initialDate: cartProvider.selectedDeliveryDate ?? nextAvail,
+                                firstDate: nextAvail,
+                                lastDate: DateTime.now().add(const Duration(days: 30)),
+                                selectableDayPredicate: (date) {
+                                  // Natively check if the day of week matches delivery schedule (1=Monday, 7=Sunday)
+                                  return deliveryDays.contains(date.weekday);
+                                },
+                                builder: (context, child) {
+                                  return Theme(
+                                    data: Theme.of(context).copyWith(
+                                      colorScheme: ColorScheme.dark(
+                                        primary: themeProvider.primaryAccent,
+                                        onPrimary: themeProvider.isDark ? Colors.black : Colors.white,
+                                        surface: themeProvider.surface,
+                                        onSurface: themeProvider.textPrimary,
+                                      ),
+                                    ),
+                                    child: child!,
+                                  );
+                                },
+                              );
+                              if (chosenDate != null) {
+                                cartProvider.setSelectedDeliveryDate(chosenDate);
+                              }
+                            },
+                            child: Row(
+                              children: [
+                                Text(
+                                  cartProvider.selectedDeliveryDate != null
+                                      ? "${cartProvider.selectedDeliveryDate!.year}-${cartProvider.selectedDeliveryDate!.month.toString().padLeft(2, '0')}-${cartProvider.selectedDeliveryDate!.day.toString().padLeft(2, '0')}"
+                                      : 'Select Date',
+                                  style: TextStyle(
+                                    color: themeProvider.primaryAccent,
+                                    fontWeight: FontWeight.bold,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Icon(Icons.calendar_today_outlined, color: themeProvider.primaryAccent, size: 14),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      
                       Divider(color: themeProvider.isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0), height: 24),
 
                       // Grand total line
@@ -239,6 +343,23 @@ class CartScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 20),
 
+                      if (isOverLimit) ...[
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: themeProvider.errorColor.withOpacity(0.1),
+                            border: Border.all(color: themeProvider.errorColor),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'Warning: Order total exceeds your available commercial credit limit of \$${availableCredit.toStringAsFixed(2)}. Please reduce your cart size to checkout.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: themeProvider.errorColor, fontSize: 12, height: 1.3, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+
                       if (cartProvider.errorMessage != null) ...[
                         Text(
                           cartProvider.errorMessage!,
@@ -252,10 +373,14 @@ class CartScreen extends StatelessWidget {
                       cartProvider.isLoading
                           ? Center(child: CircularProgressIndicator(color: themeProvider.primaryAccent))
                           : ElevatedButton(
-                              onPressed: () => _processCheckout(context, cartProvider, themeProvider),
+                              onPressed: isCheckoutDisabled ? null : () => _processCheckout(context, cartProvider, themeProvider),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: themeProvider.primaryAccent,
-                                foregroundColor: themeProvider.isDark ? Colors.black : Colors.white,
+                                backgroundColor: isCheckoutDisabled 
+                                    ? (themeProvider.isDark ? const Color(0xFF2E2E33) : const Color(0xFFE2E8F0))
+                                    : themeProvider.primaryAccent,
+                                foregroundColor: isCheckoutDisabled 
+                                    ? themeProvider.textSecondary
+                                    : (themeProvider.isDark ? Colors.black : Colors.white),
                                 padding: const EdgeInsets.symmetric(vertical: 16),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                               ),

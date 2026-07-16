@@ -8,6 +8,7 @@ import 'cart_screen.dart';
 import 'order_history_screen.dart';
 import 'location_picker_screen.dart';
 import 'login_screen.dart';
+import 'order_guide_screen.dart';
 
 class CatalogScreen extends StatefulWidget {
   const CatalogScreen({super.key});
@@ -246,6 +247,18 @@ class _CatalogScreenState extends State<CatalogScreen> {
               leading: Icon(Icons.storefront, color: themeProvider.textPrimary),
               title: Text('Product Catalog', style: TextStyle(color: themeProvider.textPrimary)),
               onTap: () => Navigator.pop(context),
+            ),
+            ListTile(
+              leading: Icon(Icons.assignment_outlined, color: themeProvider.textPrimary),
+              title: Text('Chef\'s Order Guide', style: TextStyle(color: themeProvider.textPrimary)),
+              onTap: () {
+                if (_checkGuestAction()) return;
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const OrderGuideScreen()),
+                );
+              },
             ),
             ListTile(
               leading: Icon(Icons.place_outlined, color: themeProvider.textPrimary),

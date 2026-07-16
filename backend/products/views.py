@@ -7,7 +7,7 @@ from accounts.models import CompanyLocation
 from django.db import transaction
 from accounts.models import CompanyLocation
 from .models import Product, Order, OrderItem
-from .utils import calculate_item_price
+from .utils import calculate_item_price, get_delivery_schedule
 from .pdf import generate_invoice_pdf
 from .notifications import send_invoice_email
 
@@ -78,10 +78,41 @@ class InventoryCheckoutView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+        # Validate delivery route date selection
+        import datetime
+        delivery_date_str = request.data.get('delivery_date')
+        if not delivery_date_str:
+            return Response(
+                {"error": "Please select a scheduled delivery date from the route calendar."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        try:
+            delivery_date = datetime.datetime.strptime(delivery_date_str, "%Y-%m-%d").date()
+        except (ValueError, TypeError):
+            return Response(
+                {"error": "Invalid delivery date format. Use YYYY-MM-DD."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        schedule = get_delivery_schedule(location.zip_code)
+        delivery_weekday = delivery_date.isoweekday()
+        if delivery_weekday not in schedule['delivery_days']:
+            return Response(
+                {"error": f"The selected date is not a valid delivery day for ZIP {location.zip_code}. Deliveries are only available on scheduled weekdays: {schedule['delivery_days']}."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        next_avail = datetime.date.fromisoformat(schedule['next_available_date'])
+        if delivery_date < next_avail:
+            return Response(
+                {"error": f"The selected delivery date is not available. The next route dispatch for ZIP {location.zip_code} is on or after {schedule['next_available_date']} (respecting daily cut-off rules)."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         # Wrap everything in an atomic database block. If anything fails, all changes roll back instantly.
         try:
             with transaction.atomic():
-                total_order_amount = 0
+                from decimal import Decimal
+                total_order_amount = Decimal('0.00')
                 order_items_to_create = []
 
                 # Build out the text address snapshot permanently
@@ -120,7 +151,7 @@ class InventoryCheckoutView(APIView):
 
                     # Calculate the true real-time contract/regional tier price
                     price_paid = calculate_item_price(user, location, product)
-                    line_total = price_paid * quantity
+                    line_total = Decimal(str(price_paid)) * quantity
                     total_order_amount += line_total
 
                     # Queue up the line item payload array
@@ -130,12 +161,27 @@ class InventoryCheckoutView(APIView):
                         "price_paid": price_paid
                     })
 
+                # Verify corporate credit limits
+                company = user.company
+                if company:
+                    from accounts.models import Company
+                    locked_company = Company.objects.select_for_update().get(id=company.id)
+                    new_balance = locked_company.outstanding_balance + total_order_amount
+                    if new_balance > locked_company.credit_limit:
+                        raise CheckoutError(
+                            f"Purchase Order exceeds your commercial credit limit. Required: ${total_order_amount:.2f}. Available credit: ${(locked_company.credit_limit - locked_company.outstanding_balance):.2f}.",
+                            status.HTTP_400_BAD_REQUEST
+                        )
+                    locked_company.outstanding_balance = new_balance
+                    locked_company.save()
+
                 # Create the master transaction envelope record
                 master_order = Order.objects.create(
                     user=user,
                     location=location,
                     delivery_address_snapshot=address_snapshot,
                     sales_tax_id_snapshot=tax_snapshot,
+                    delivery_date=delivery_date,
                     total_amount=total_order_amount
                 )
 
@@ -332,3 +378,99 @@ class ProductCategoryListView(APIView):
             for cat in categories
         ]
         return Response(data, status=status.HTTP_200_OK)
+
+
+class OrderGuideListView(APIView):
+    """
+    Returns frequently ordered products for the authenticated user's company
+    to populate their custom Order Guide.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from django.db.models import Count, Sum
+        from products.models import OrderItem, Product
+        from accounts.models import CompanyLocation
+
+        user = request.user
+        location_id = request.query_params.get('location_id')
+        
+        # Resolve user's branch location for regional pricing tier checking
+        location = None
+        if location_id:
+            location = CompanyLocation.objects.filter(
+                id=location_id,
+                company=user.company
+            ).first()
+
+        # Aggregate order history to find top products ordered by this company
+        frequent_items = OrderItem.objects.filter(
+            order__user__company=user.company
+        ).values('product').annotate(
+            order_count=Count('order', distinct=True),
+            total_qty=Sum('quantity')
+        ).order_by('-order_count', '-total_qty')
+        
+        product_ids = [item['product'] for item in frequent_items]
+        
+        # Resolve products dictionary in one query
+        products = {
+            p.id: p 
+            for p in Product.objects.filter(id__in=product_ids, is_available=True).select_related('category')
+        }
+        
+        data = []
+        for item in frequent_items:
+            prod_id = item['product']
+            if prod_id not in products:
+                continue
+            product = products[prod_id]
+            calculated_price = calculate_item_price(user, location, product)
+            
+            image_url = None
+            if product.image:
+                image_url = request.build_absolute_uri(product.image.url)
+
+            data.append({
+                "sku": product.sku,
+                "name": product.name,
+                "description": product.description,
+                "unit_of_measure": product.unit_of_measure,
+                "base_price": str(product.base_price),
+                "calculated_price": str(calculated_price),
+                "stock_quantity": product.stock_quantity,
+                "image_url": image_url,
+                "category": {
+                    "id": product.category.id,
+                    "name": product.category.name,
+                    "slug": product.category.slug,
+                } if product.category else None,
+                "is_available": product.is_available,
+                "frequency_count": item['order_count']
+            })
+            
+        return Response(data, status=status.HTTP_200_OK)
+
+
+class ZipCodeDeliveryRouteView(APIView):
+    """
+    Exposes the scheduled delivery weekdays, cut-off hours, and next available shipment dates
+    matching a target ZIP code parameter.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        zip_code = request.query_params.get('zip_code')
+        if not zip_code:
+            return Response(
+                {"error": "Missing zip_code query parameter."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        try:
+            schedule = get_delivery_schedule(zip_code)
+            return Response(schedule, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(
+                {"error": f"Failed resolving route parameters: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

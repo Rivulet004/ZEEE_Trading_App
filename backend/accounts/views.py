@@ -109,3 +109,14 @@ class CompanyLocationListView(APIView):
         locations = request.user.company.locations.all()
         serializer = CompanyLocationSerializer(locations, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        if not request.user.company:
+            return Response({"error": "User does not belong to a registered company."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        from .serializers import CompanyLocationSerializer
+        serializer = CompanyLocationSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(company=request.user.company)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
