@@ -119,20 +119,29 @@ class CatalogProvider extends ChangeNotifier {
   }
 
   // Fetches historical tenant purchase order logs
-  Future<void> fetchOrderHistory() async {
-    _setLoading(true);
+  Future<void> fetchOrderHistory({bool showLoading = true}) async {
+    if (showLoading) {
+      _setLoading(true);
+    }
     _setError(null);
 
     try {
       final response = await apiClient.dio.get('/api/v1/orders/history/');
       if (response.statusCode == 200) {
         _orderHistory = response.data;
+        if (!showLoading) {
+          notifyListeners();
+        }
       }
     } catch (e) {
-      _setError(e.toString());
+      if (showLoading) {
+        _setError(e.toString());
+      }
     }
 
-    _setLoading(false);
+    if (showLoading) {
+      _setLoading(false);
+    }
   }
 
   // Fetches categories dynamically from database

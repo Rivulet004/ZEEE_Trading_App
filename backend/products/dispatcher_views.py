@@ -84,7 +84,10 @@ class DispatcherOrderStatusView(DispatcherStaffRequiredMixin, View):
         else:
             new_status = request.POST.get('status')
 
-        if new_status not in ['pending', 'approved', 'shipped', 'delivered', 'cancelled']:
+        if new_status:
+            new_status = new_status.upper()
+
+        if new_status not in ['PENDING', 'APPROVED', 'SHIPPED', 'DELIVERED', 'CANCELLED']:
             return JsonResponse({'error': f'Invalid status: {new_status}'}, status=400)
 
         order.status = new_status

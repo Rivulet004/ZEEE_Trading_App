@@ -557,7 +557,7 @@
 
             const filtered = orders.filter(o => {
                 if (currentFilter === 'all') return true;
-                return o.status === currentFilter;
+                return o.status.toLowerCase() === currentFilter.toLowerCase();
             });
 
             if (filtered.length === 0) {
@@ -578,7 +578,7 @@
                 card.innerHTML = `
                     <div class="card-header">
                         <span class="order-id">PO #${o.id}</span>
-                        <span class="order-status status-${o.status}">${o.status}</span>
+                        <span class="order-status status-${o.status.toLowerCase()}">${o.status}</span>
                     </div>
                     <p class="company-name">${o.company_name}</p>
                     <p class="location-name">${o.location_name}</p>
@@ -633,9 +633,13 @@
                         <div class="detail-subtitle">Submitted: ${new Date(order.created_at).toLocaleString()}</div>
                     </div>
                     <div class="detail-actions">
-                        <button class="btn btn-secondary" onclick="printInvoice(${order.id})">
+                        <button class="btn btn-secondary" onclick="viewInvoice(${order.id})">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            VIEW PDF
+                        </button>
+                        <button class="btn btn-primary" onclick="printInvoiceDirectly(${order.id})">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-                            PRINT INVOICE
+                            PRINT DIRECTLY
                         </button>
                     </div>
                 </div>
@@ -687,7 +691,7 @@
                 <!-- Footer status transitions -->
                 <div class="fulfillment-bar">
                     <div class="fulfillment-status-text">
-                        Current Status: <span class="order-status status-${order.status}" style="font-size: 11px; margin-left: 6px;">${order.status}</span>
+                        Current Status: <span class="order-status status-${order.status.toLowerCase()}" style="font-size: 11px; margin-left: 6px;">${order.status}</span>
                     </div>
                     <div class="fulfillment-buttons">
                         ${getStatusButtonsHtml(order)}
@@ -698,17 +702,18 @@
 
         // Returns dynamic button triggers based on the current order status
         function getStatusButtonsHtml(order) {
-            if (order.status === 'pending') {
+            const status = order.status.toUpperCase();
+            if (status === 'PENDING') {
                 return `
                     <button class="btn btn-status-approved" onclick="updateStatus(${order.id}, 'approved')">APPROVE FOR PACKING</button>
                     <button class="btn btn-status-cancelled" onclick="updateStatus(${order.id}, 'cancelled')">CANCEL ORDER</button>
                 `;
-            } else if (order.status === 'approved') {
+            } else if (status === 'APPROVED') {
                 return `
                     <button class="btn btn-status-shipped" onclick="updateStatus(${order.id}, 'shipped')">DISPATCH / DEPART ROUTE</button>
                     <button class="btn btn-status-cancelled" onclick="updateStatus(${order.id}, 'cancelled')">CANCEL ORDER</button>
                 `;
-            } else if (order.status === 'shipped') {
+            } else if (status === 'SHIPPED') {
                 return `
                     <button class="btn btn-status-delivered" onclick="updateStatus(${order.id}, 'delivered')">MARK DELIVERED</button>
                 `;
@@ -716,22 +721,40 @@
             return `<span style="color: var(--text-secondary); font-size: 13px; font-weight: 600;">Fulfillment cycle completed.</span>`;
         }
 
+        // Get CSRF cookie helper
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
         // Triggers the background status POST request
         async function updateStatus(orderId, newStatus) {
+            const upperStatus = newStatus.toUpperCase();
             try {
                 const response = await fetch(`/dispatcher/order/${orderId}/status/`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
                     },
-                    body: JSON.stringify({ status: newStatus })
+                    body: JSON.stringify({ status: upperStatus })
                 });
 
                 if (response.status === 200) {
                     // Update locally immediately and refresh
                     const order = orders.find(o => o.id === orderId);
                     if (order) {
-                        order.status = newStatus;
+                        order.status = upperStatus;
                         renderQueue(new Set());
                         renderDetails(order);
                     }
@@ -743,9 +766,32 @@
             }
         }
 
-        // Prints B2B PDF invoice
-        function printInvoice(orderId) {
+        // Opens B2B PDF invoice in a new tab
+        function viewInvoice(orderId) {
             window.open(`/dispatcher/order/${orderId}/invoice/`, '_blank');
+        }
+
+        // Prints B2B PDF invoice in the background without leaving the tab
+        function printInvoiceDirectly(orderId) {
+            let iframe = document.getElementById('printIframe');
+            if (!iframe) {
+                iframe = document.createElement('iframe');
+                iframe.id = 'printIframe';
+                iframe.style.position = 'fixed';
+                iframe.style.right = '0';
+                iframe.style.bottom = '0';
+                iframe.style.width = '0';
+                iframe.style.height = '0';
+                iframe.style.border = '0';
+                document.body.appendChild(iframe);
+            }
+            
+            iframe.src = `/dispatcher/order/${orderId}/invoice/`;
+            
+            iframe.onload = function() {
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+            };
         }
 
         // Initial Load and Setup Interval looping (Every 3 seconds)

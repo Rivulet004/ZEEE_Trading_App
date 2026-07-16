@@ -883,7 +883,7 @@ class DispatcherPortalTests(APITestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.order.refresh_from_db()
-        self.assertEqual(self.order.status, "approved")
+        self.assertEqual(self.order.status, "APPROVED")
 
         # Transition to invalid state should fail
         response = self.client.post(
