@@ -94,3 +94,36 @@ def trigger_order_webhook(order, event_type):
             args=(target.url, payload), 
             daemon=True
         ).start()
+
+
+def send_status_update_email(order):
+    """
+    Constructs and dispatches an email to the B2B customer informing them
+    of their order's new fulfillment status.
+    """
+    subject = f"B2B Order PO #{order.id} Status Update: {order.status.upper()}"
+    
+    body = f"""Hi {order.user.first_name or order.user.username},
+
+Your purchase order PO #{order.id} status has been updated to: {order.status.upper()}.
+
+Summary details:
+- Company: {order.user.company.legal_name if (order.user and order.user.company) else 'N/A'}
+- Purchase Order: PO #{order.id}
+- Current Status: {order.status.upper()}
+- Delivery Date: {order.delivery_date.strftime('%Y-%m-%d') if order.delivery_date else 'N/A'}
+- Delivery Address:
+{order.delivery_address_snapshot}
+
+Best regards,
+B2B Wholesale Portal Operations
+Fulfillment and Logistics Center
+"""
+
+    email = EmailMessage(
+        subject=subject,
+        body=body,
+        from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@zevron.com'),
+        to=[order.user.email],
+    )
+    email.send(fail_silently=True)

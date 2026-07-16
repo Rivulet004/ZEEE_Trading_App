@@ -786,3 +786,109 @@ class SystemAlertAPITests(APITestCase):
         self.assertIn("Alert 10 days ago", messages)
         self.assertNotIn("Alert inactive", messages)
         self.assertNotIn("Alert 16 days ago", messages)
+
+
+class DispatcherPortalTests(APITestCase):
+    """
+    Verifies the web-based Dispatcher Portal security access controls,
+    real-time API responses, and order status transition triggers.
+    """
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        from accounts.models import Company, CompanyLocation
+        from products.models import Order, Product, OrderItem
+
+        User = get_user_model()
+        self.company = Company.objects.create(legal_name="Warehouse Logistics")
+        self.location = CompanyLocation.objects.create(
+            company=self.company,
+            location_name="Base Depot",
+            zip_code="39401"
+        )
+        
+        # Dispatcher (Staff User)
+        self.dispatcher = User.objects.create_user(
+            username="dispatcher_bob",
+            email="bob@zevron.com",
+            password="securepassword",
+            is_staff=True
+        )
+
+        # Standard B2B User (Non-Staff)
+        self.customer = User.objects.create_user(
+            username="customer_alice",
+            email="alice@zevron.com",
+            password="securepassword",
+            company=self.company
+        )
+
+        # Product
+        self.product = Product.objects.create(
+            sku="SKU-DISP-01",
+            name="Logistics Crate",
+            base_price=50.00
+        )
+
+        # Order
+        self.order = Order.objects.create(
+            user=self.customer,
+            location=self.location,
+            total_amount=50.00
+        )
+        OrderItem.objects.create(order=self.order, product=self.product, quantity=1, price_paid=50.00)
+
+        # Routing endpoints
+        self.dashboard_url = reverse('dispatcher_dashboard')
+        self.api_url = reverse('dispatcher_api_orders')
+        self.status_url = reverse('dispatcher_status_update', args=[self.order.id])
+
+    def test_unauthenticated_user_is_redirected(self):
+        # Dashboard should redirect to dispatcher login
+        response = self.client.get(self.dashboard_url)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/dispatcher/login/', response.url)
+
+    def test_non_staff_user_is_denied_access(self):
+        self.client.force_login(self.customer)
+        response = self.client.get(self.dashboard_url)
+        # Should fail test_func and return 403 Permission Denied
+        self.assertEqual(response.status_code, 403)
+
+    def test_staff_dispatcher_has_access(self):
+        self.client.force_login(self.dispatcher)
+        response = self.client.get(self.dashboard_url)
+        self.assertEqual(response.status_code, 200)
+
+    def test_orders_api_endpoint(self):
+        self.client.force_login(self.dispatcher)
+        response = self.client.get(self.api_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()), 1)
+        
+        ord_data = response.json()[0]
+        self.assertEqual(ord_data['id'], self.order.id)
+        self.assertEqual(ord_data['company_name'], "Warehouse Logistics")
+        self.assertEqual(len(ord_data['items']), 1)
+        self.assertEqual(ord_data['items'][0]['product_sku'], "SKU-DISP-01")
+
+    def test_status_transition_updates_status(self):
+        self.client.force_login(self.dispatcher)
+        
+        # Transition to approved
+        response = self.client.post(
+            self.status_url,
+            {"status": "approved"},
+            format='json'
+        )
+        self.assertEqual(response.status_code, 200)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, "approved")
+
+        # Transition to invalid state should fail
+        response = self.client.post(
+            self.status_url,
+            {"status": "invalid_status_value"},
+            format='json'
+        )
+        self.assertEqual(response.status_code, 400)

@@ -38,6 +38,13 @@ from products.views import (
     ZipCodeDeliveryRouteView,
     SystemAlertListView
 )
+from products.dispatcher_views import (
+    DispatcherLoginView,
+    DispatcherDashboardView,
+    DispatcherOrderApiView,
+    DispatcherOrderStatusView,
+    DispatcherInvoicePdfView
+)
 
 urlpatterns = [
     # Master Django Administrative Portal Route Gateway
@@ -65,6 +72,13 @@ urlpatterns = [
     path('api/v1/products/order-guide/', OrderGuideListView.as_view(), name='api_order_guide'),
     path('api/v1/delivery-route/', ZipCodeDeliveryRouteView.as_view(), name='api_delivery_route'),
     path('api/v1/alerts/', SystemAlertListView.as_view(), name='api_alerts_list'),
+    
+    # Dispatcher Portal routing rules
+    path('dispatcher/login/', DispatcherLoginView.as_view(), name='dispatcher_login'),
+    path('dispatcher/', DispatcherDashboardView.as_view(), name='dispatcher_dashboard'),
+    path('dispatcher/api/orders/', DispatcherOrderApiView.as_view(), name='dispatcher_api_orders'),
+    path('dispatcher/order/<int:order_id>/status/', DispatcherOrderStatusView.as_view(), name='dispatcher_status_update'),
+    path('dispatcher/order/<int:order_id>/invoice/', DispatcherInvoicePdfView.as_view(), name='dispatcher_invoice_pdf'),
 ]
 
 if settings.DEBUG:

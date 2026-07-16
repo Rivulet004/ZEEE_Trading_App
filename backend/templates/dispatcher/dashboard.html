@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZEEE Logistics - Dispatch Console</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0F172A;
+            --surface-color: #1E293B;
+            --border-color: #334155;
+            --primary-accent: #38BDF8;
+            --text-primary: #F8FAFC;
+            --text-secondary: #94A3B8;
+            
+            --pending-color: #F59E0B;
+            --approved-color: #10B981;
+            --shipped-color: #3B82F6;
+            --delivered-color: #8B5CF6;
+            --cancelled-color: #EF4444;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Top Header Navigation Banner */
+        header {
+            background-color: var(--surface-color);
+            border-bottom: 1px solid var(--border-color);
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-sizing: border-box;
+        }
+
+        .header-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-box {
+            background: linear-gradient(135deg, #38BDF8 0%, #3B82F6 100%);
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #0F172A;
+            font-weight: 800;
+            font-size: 18px;
+        }
+
+        .header-title h1 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .header-title p {
+            margin: 2px 0 0 0;
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .cutoff-indicator {
+            background-color: rgba(56, 189, 248, 0.08);
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            border-radius: 20px;
+            padding: 6px 14px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--primary-accent);
+        }
+
+        .logout-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 6px;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .logout-link:hover {
+            background-color: rgba(239, 68, 68, 0.1);
+            color: var(--cancelled-color);
+        }
+
+        /* Main Workspace Split Pane Layout */
+        .workspace {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+
+        /* Left-hand Queue Pane */
+        .queue-pane {
+            width: 420px;
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            background-color: rgba(15, 23, 42, 0.5);
+        }
+
+        /* Filter Chips Toolbar */
+        .filter-bar {
+            padding: 16px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            flex-shrink: 0;
+        }
+
+        .filter-chip {
+            background-color: var(--surface-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+
+        .filter-chip:hover {
+            color: var(--text-primary);
+            border-color: var(--text-secondary);
+        }
+
+        .filter-chip.active {
+            background-color: var(--primary-accent);
+            border-color: var(--primary-accent);
+            color: #0F172A;
+        }
+
+        .orders-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* Order Cards Styling */
+        .order-card {
+            background-color: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            cursor: pointer;
+            transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+            position: relative;
+        }
+
+        .order-card:hover {
+            border-color: var(--primary-accent);
+            box-shadow: 0 4px 12px rgba(56, 189, 248, 0.05);
+        }
+
+        .order-card.selected {
+            border-color: var(--primary-accent);
+            background-color: rgba(56, 189, 248, 0.03);
+            box-shadow: 0 0 0 1px var(--primary-accent);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .order-id {
+            font-weight: 700;
+            font-size: 15px;
+        }
+
+        .order-status {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 4px 8px;
+            border-radius: 4px;
+            letter-spacing: 0.5px;
+        }
+
+        .status-pending { background-color: rgba(245, 158, 11, 0.1); color: var(--pending-color); border: 1px solid rgba(245, 158, 11, 0.3); }
+        .status-approved { background-color: rgba(16, 185, 129, 0.1); color: var(--approved-color); border: 1px solid rgba(16, 185, 129, 0.3); }
+        .status-shipped { background-color: rgba(59, 130, 246, 0.1); color: var(--shipped-color); border: 1px solid rgba(59, 130, 246, 0.3); }
+        .status-delivered { background-color: rgba(139, 92, 246, 0.1); color: var(--delivered-color); border: 1px solid rgba(139, 92, 246, 0.3); }
+        .status-cancelled { background-color: rgba(239, 68, 68, 0.1); color: var(--cancelled-color); border: 1px solid rgba(239, 68, 68, 0.3); }
+
+        .company-name {
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--text-primary);
+            margin: 0 0 6px 0;
+        }
+
+        .location-name {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin: 0 0 8px 0;
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: var(--text-secondary);
+            border-top: 1px solid rgba(255, 255, 255, 0.03);
+            padding-top: 8px;
+            margin-top: 8px;
+        }
+
+        .card-amount {
+            color: var(--primary-accent);
+            font-weight: 700;
+        }
+
+        /* Real-Time Flash Animation on new Order Landing */
+        @keyframes flashNew {
+            0% { border-color: var(--primary-accent); background-color: rgba(56, 189, 248, 0.3); }
+            100% { border-color: var(--border-color); background-color: var(--surface-color); }
+        }
+
+        .flash-new {
+            animation: flashNew 1.5s ease-out;
+        }
+
+        /* Right-hand Detail Pane */
+        .detail-pane {
+            flex: 1;
+            background-color: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .placeholder-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-secondary);
+            gap: 16px;
+        }
+
+        .placeholder-state svg {
+            width: 64px;
+            height: 64px;
+            stroke: var(--text-secondary);
+            opacity: 0.3;
+        }
+
+        .detail-header {
+            padding: 24px;
+            border-bottom: 1px solid var(--border-color);
+            background-color: var(--surface-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .detail-header h2 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        .detail-subtitle {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .detail-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 10px 18px;
+            font-size: 13px;
+            font-weight: 700;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover { opacity: 0.9; }
+        .btn:active { transform: scale(0.98); }
+
+        .btn-primary { background-color: var(--primary-accent); color: #0F172A; }
+        .btn-secondary { background-color: transparent; border: 1px solid var(--border-color); color: var(--text-primary); }
+
+        .detail-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .grid-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .info-card {
+            background-color: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .info-card h3 {
+            margin: 0 0 12px 0;
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        .info-card p {
+            margin: 0;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .info-card .highlight {
+            color: var(--primary-accent);
+            font-weight: 700;
+        }
+
+        /* Items Manifest Table Styling */
+        .manifest-container {
+            background-color: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .manifest-title {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-secondary);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        th {
+            background-color: rgba(15, 23, 42, 0.3);
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 14px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            color: var(--text-primary);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .items-total-row {
+            background-color: rgba(15, 23, 42, 0.15);
+            font-weight: 700;
+        }
+
+        /* Stepper action control strip */
+        .fulfillment-bar {
+            background-color: var(--surface-color);
+            border-top: 1px solid var(--border-color);
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .fulfillment-status-text {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .fulfillment-status-text strong {
+            color: var(--text-primary);
+        }
+
+        .fulfillment-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn-status-pending { background-color: var(--pending-color); color: #0F172A; }
+        .btn-status-approved { background-color: var(--approved-color); color: #0F172A; }
+        .btn-status-shipped { background-color: var(--shipped-color); color: white; }
+        .btn-status-delivered { background-color: var(--delivered-color); color: white; }
+        .btn-status-cancelled { background-color: var(--cancelled-color); color: white; }
+    </style>
+</head>
+<body>
+
+    <!-- Header Navigation bar -->
+    <header>
+        <div class="header-logo">
+            <div class="logo-box">Z</div>
+            <div class="header-title">
+                <h1>ZEEE Logistics</h1>
+                <p>Dispatch Control Operations Console</p>
+            </div>
+        </div>
+        
+        <div class="header-actions">
+            <div class="cutoff-indicator">Cut-Off Scheduler: 4:00 PM Active</div>
+            <a href="/admin/" class="logout-link" style="border: 1px solid var(--border-color); border-radius: 6px;">Django Admin</a>
+            <a href="/admin/logout/" class="logout-link">Sign Out</a>
+        </div>
+    </header>
+
+    <!-- Main Workspace Split Pane -->
+    <div class="workspace">
+        
+        <!-- Left Side: Real-Time Order Stream Queue -->
+        <div class="queue-pane">
+            <div class="filter-bar">
+                <div class="filter-chip active" onclick="setFilter('all')">ALL</div>
+                <div class="filter-chip" onclick="setFilter('pending')">PENDING</div>
+                <div class="filter-chip" onclick="setFilter('approved')">APPROVED</div>
+                <div class="filter-chip" onclick="setFilter('shipped')">SHIPPED</div>
+                <div class="filter-chip" onclick="setFilter('delivered')">DELIVERED</div>
+            </div>
+            
+            <div class="orders-list" id="ordersQueue">
+                <!-- Javascript will render order cards here dynamically -->
+            </div>
+        </div>
+
+        <!-- Right Side: Order Detail & Actions console -->
+        <div class="detail-pane" id="detailPane">
+            <div class="placeholder-state">
+                <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"></path>
+                </svg>
+                <p>Select a purchase order from the queue to manage fulfillment logistics.</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Background Real-Time Polling & Rendering logic -->
+    <script>
+        let currentFilter = 'all';
+        let orders = [];
+        let selectedOrderId = null;
+        let knownOrderIds = new Set();
+        let isFirstLoad = true;
+
+        // AJAX Polling pipeline - fetches latest orders list every 3 seconds
+        async function pollOrders() {
+            try {
+                const response = await fetch('/dispatcher/api/orders/');
+                if (response.status === 200) {
+                    const data = await response.json();
+                    
+                    // Identify newly placed orders to apply flash effects
+                    const newIds = new Set(data.map(o => o.id));
+                    
+                    orders = data;
+                    renderQueue(newIds);
+                    
+                    // If a selected order is updated, re-render the detail pane automatically
+                    if (selectedOrderId) {
+                        const updatedOrder = orders.find(o => o.id === selectedOrderId);
+                        if (updatedOrder) {
+                            renderDetails(updatedOrder);
+                        }
+                    }
+                    
+                    // Update list of known ids
+                    newIds.forEach(id => knownOrderIds.add(id));
+                    isFirstLoad = false;
+                }
+            } catch (error) {
+                console.error("Fulfillment sync failed:", error);
+            }
+        }
+
+        // Sets filters on the tabs
+        function setFilter(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-chip').forEach(chip => {
+                chip.classList.remove('active');
+                if (chip.textContent.toLowerCase() === filter) {
+                    chip.classList.add('active');
+                }
+            });
+            renderQueue(new Set());
+        }
+
+        // Renders list of orders inside the scrollable left panel
+        function renderQueue(newIds) {
+            const queueEl = document.getElementById('ordersQueue');
+            queueEl.innerHTML = '';
+
+            const filtered = orders.filter(o => {
+                if (currentFilter === 'all') return true;
+                return o.status === currentFilter;
+            });
+
+            if (filtered.length === 0) {
+                queueEl.innerHTML = '<div style="color: var(--text-secondary); text-align: center; padding: 40px 0; font-size: 13px;">No orders found in this state.</div>';
+                return;
+            }
+
+            filtered.forEach(o => {
+                const isSelected = o.id === selectedOrderId;
+                const isNew = !isFirstLoad && !knownOrderIds.has(o.id);
+                
+                const card = document.createElement('div');
+                card.className = `order-card ${isSelected ? 'selected' : ''} ${isNew ? 'flash-new' : ''}`;
+                card.onclick = () => selectOrder(o.id);
+                
+                const createdTime = new Date(o.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+                card.innerHTML = `
+                    <div class="card-header">
+                        <span class="order-id">PO #${o.id}</span>
+                        <span class="order-status status-${o.status}">${o.status}</span>
+                    </div>
+                    <p class="company-name">${o.company_name}</p>
+                    <p class="location-name">${o.location_name}</p>
+                    <div class="card-footer">
+                        <span>Delivery: ${o.delivery_date}</span>
+                        <span class="card-amount">$${parseFloat(o.total_amount).toFixed(2)}</span>
+                    </div>
+                `;
+                queueEl.appendChild(card);
+            });
+        }
+
+        // Activates the detail panel on click
+        function selectOrder(orderId) {
+            selectedOrderId = orderId;
+            
+            // Highlight selected card in the left list
+            document.querySelectorAll('.order-card').forEach(card => {
+                card.classList.remove('selected');
+                if (card.querySelector('.order-id').textContent === `PO #${orderId}`) {
+                    card.classList.add('selected');
+                }
+            });
+
+            const order = orders.find(o => o.id === orderId);
+            if (order) {
+                renderDetails(order);
+            }
+        }
+
+        // Renders the right-hand panel markup for the selected order
+        function renderDetails(order) {
+            const pane = document.getElementById('detailPane');
+            
+            let itemsHtml = '';
+            order.items.forEach(item => {
+                itemsHtml += `
+                    <tr>
+                        <td>${item.product_name}</td>
+                        <td><code>${item.product_sku}</code></td>
+                        <td>${item.quantity}</td>
+                        <td>$${parseFloat(item.price_paid).toFixed(2)}</td>
+                        <td style="text-align: right; font-weight: 600;">$${(item.quantity * parseFloat(item.price_paid)).toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+
+            pane.innerHTML = `
+                <div class="detail-header">
+                    <div>
+                        <h2>Purchase Order PO #${order.id}</h2>
+                        <div class="detail-subtitle">Submitted: ${new Date(order.created_at).toLocaleString()}</div>
+                    </div>
+                    <div class="detail-actions">
+                        <button class="btn btn-secondary" onclick="printInvoice(${order.id})">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                            PRINT INVOICE
+                        </button>
+                    </div>
+                </div>
+
+                <div class="detail-body">
+                    
+                    <div class="grid-info">
+                        <div class="info-card">
+                            <h3>Corporate Client</h3>
+                            <p><strong>${order.company_name}</strong></p>
+                            <p style="color: var(--text-secondary); margin-top: 4px;">Branch target: ${order.location_name}</p>
+                        </div>
+                        <div class="info-card">
+                            <h3>Scheduled Logistics Route</h3>
+                            <p class="highlight">${order.delivery_date}</p>
+                            <p style="color: var(--text-secondary); margin-top: 4px; font-size: 12px;">Warehouse daily cutoff locks at 4:00 PM</p>
+                        </div>
+                    </div>
+
+                    <div class="info-card" style="grid-column: span 2;">
+                        <h3>Shipping Destination Snapshot</h3>
+                        <p style="font-size: 15px; font-weight: 500;">${order.delivery_address}</p>
+                    </div>
+
+                    <div class="manifest-container">
+                        <div class="manifest-title">Items Manifest</div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>SKU</th>
+                                    <th>Quantity</th>
+                                    <th>Unit Price</th>
+                                    <th style="text-align: right;">Line Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${itemsHtml}
+                                <tr class="items-total-row">
+                                    <td colspan="4" style="text-align: right; padding: 16px;">Grand Total:</td>
+                                    <td style="text-align: right; padding: 16px; color: var(--primary-accent);">$${parseFloat(order.total_amount).toFixed(2)}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+
+                <!-- Footer status transitions -->
+                <div class="fulfillment-bar">
+                    <div class="fulfillment-status-text">
+                        Current Status: <span class="order-status status-${order.status}" style="font-size: 11px; margin-left: 6px;">${order.status}</span>
+                    </div>
+                    <div class="fulfillment-buttons">
+                        ${getStatusButtonsHtml(order)}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Returns dynamic button triggers based on the current order status
+        function getStatusButtonsHtml(order) {
+            if (order.status === 'pending') {
+                return `
+                    <button class="btn btn-status-approved" onclick="updateStatus(${order.id}, 'approved')">APPROVE FOR PACKING</button>
+                    <button class="btn btn-status-cancelled" onclick="updateStatus(${order.id}, 'cancelled')">CANCEL ORDER</button>
+                `;
+            } else if (order.status === 'approved') {
+                return `
+                    <button class="btn btn-status-shipped" onclick="updateStatus(${order.id}, 'shipped')">DISPATCH / DEPART ROUTE</button>
+                    <button class="btn btn-status-cancelled" onclick="updateStatus(${order.id}, 'cancelled')">CANCEL ORDER</button>
+                `;
+            } else if (order.status === 'shipped') {
+                return `
+                    <button class="btn btn-status-delivered" onclick="updateStatus(${order.id}, 'delivered')">MARK DELIVERED</button>
+                `;
+            }
+            return `<span style="color: var(--text-secondary); font-size: 13px; font-weight: 600;">Fulfillment cycle completed.</span>`;
+        }
+
+        // Triggers the background status POST request
+        async function updateStatus(orderId, newStatus) {
+            try {
+                const response = await fetch(`/dispatcher/order/${orderId}/status/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ status: newStatus })
+                });
+
+                if (response.status === 200) {
+                    // Update locally immediately and refresh
+                    const order = orders.find(o => o.id === orderId);
+                    if (order) {
+                        order.status = newStatus;
+                        renderQueue(new Set());
+                        renderDetails(order);
+                    }
+                } else {
+                    alert("Failed to update status. Check dispatcher authorizations.");
+                }
+            } catch (e) {
+                console.error("Status transition failed:", e);
+            }
+        }
+
+        // Prints B2B PDF invoice
+        function printInvoice(orderId) {
+            window.open(`/dispatcher/order/${orderId}/invoice/`, '_blank');
+        }
+
+        // Initial Load and Setup Interval looping (Every 3 seconds)
+        pollOrders();
+        setInterval(pollOrders, 3000);
+    </script>
+</body>
+</html>
