@@ -1,4 +1,5 @@
 from django.contrib import admin
+from unfold.admin import ModelAdmin, TabularInline
 from .models import (
     Product, 
     ZipCodePricing, 
@@ -13,16 +14,16 @@ from .models import (
     SystemAlert
 )
 
-class ZipCodePricingInline(admin.TabularInline):
+class ZipCodePricingInline(TabularInline):
     model = ZipCodePricing
     extra = 1
 
-class UserCustomPricingInline(admin.TabularInline):
+class UserCustomPricingInline(TabularInline):
     model = UserCustomPricing
     extra = 1
 
 @admin.register(Product)
-class ProductAdmin(admin.ModelAdmin):
+class ProductAdmin(ModelAdmin):
     list_display = ('sku', 'name', 'base_price', 'unit_of_measure', 'stock_quantity', 'is_available')
     search_fields = ('sku', 'name')
     list_filter = ('is_available',)
@@ -222,14 +223,14 @@ class ProductAdmin(admin.ModelAdmin):
         )
         return render(request, "admin/products/import_csv.html", context)
 
-class OrderItemInline(admin.TabularInline):
+class OrderItemInline(TabularInline):
     model = OrderItem
     extra = 0
     readonly_fields = ('product', 'quantity', 'price_paid')
     can_delete = False
 
 @admin.register(Order)
-class OrderAdmin(admin.ModelAdmin):
+class OrderAdmin(ModelAdmin):
     list_display = ('id', 'get_company_name', 'status', 'total_amount', 'created_at')
     list_filter = ('status', 'created_at')
     search_fields = ('id', 'user__username', 'sales_tax_id_snapshot')
@@ -239,14 +240,14 @@ class OrderAdmin(admin.ModelAdmin):
     def get_company_name(self, obj):
         return obj.location.company.legal_name
 
-class CSVImportRowErrorInline(admin.TabularInline):
+class CSVImportRowErrorInline(TabularInline):
     model = CSVImportRowError
     extra = 0
     readonly_fields = ('line_number', 'row_data', 'error_message')
     can_delete = False
 
 @admin.register(CSVImportLog)
-class CSVImportLogAdmin(admin.ModelAdmin):
+class CSVImportLogAdmin(ModelAdmin):
     list_display = ('file_name', 'import_type', 'uploaded_by', 'uploaded_at', 'status', 'summary')
     list_filter = ('status', 'import_type', 'uploaded_at')
     search_fields = ('file_name', 'summary')
@@ -254,27 +255,27 @@ class CSVImportLogAdmin(admin.ModelAdmin):
     inlines = [CSVImportRowErrorInline]
 
 @admin.register(LogisticsWebhookTarget)
-class LogisticsWebhookTargetAdmin(admin.ModelAdmin):
+class LogisticsWebhookTargetAdmin(ModelAdmin):
     list_display = ('url', 'is_active', 'created_at')
     list_filter = ('is_active', 'created_at')
     search_fields = ('url',)
 
 
 @admin.register(Category)
-class CategoryAdmin(admin.ModelAdmin):
+class CategoryAdmin(ModelAdmin):
     list_display = ('name', 'slug', 'created_at')
     search_fields = ('name', 'slug')
     prepopulated_fields = {'slug': ('name',)}
 
 
 @admin.register(ZipCodeRouteRule)
-class ZipCodeRouteRuleAdmin(admin.ModelAdmin):
+class ZipCodeRouteRuleAdmin(ModelAdmin):
     list_display = ('zip_code', 'delivery_days', 'cutoff_time')
     search_fields = ('zip_code',)
 
 
 @admin.register(SystemAlert)
-class SystemAlertAdmin(admin.ModelAdmin):
+class SystemAlertAdmin(ModelAdmin):
     list_display = ('severity', 'message_snippet', 'is_active', 'created_at')
     list_filter = ('severity', 'is_active', 'created_at')
     search_fields = ('message',)

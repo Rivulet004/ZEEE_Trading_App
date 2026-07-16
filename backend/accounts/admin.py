@@ -1,9 +1,11 @@
 from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin
 from django.utils.translation import gettext_lazy as _
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from unfold.admin import ModelAdmin, TabularInline, StackedInline
+from unfold.forms import AdminPasswordChangeForm, UserChangeForm, UserCreationForm
 from .models import Company, CompanyLocation, UserProfile
 
-class CompanyLocationInline(admin.StackedInline):
+class CompanyLocationInline(StackedInline):
     """
     Allows physical delivery locations to be edited directly 
     inside the master Company dashboard screen (Inline layout).
@@ -22,7 +24,7 @@ class CompanyLocationInline(admin.StackedInline):
     )
 
 
-class UserProfileInline(admin.TabularInline):
+class UserProfileInline(TabularInline):
     """
     Allows management to view, add, or change employee login 
     accounts directly from the master Company screen.
@@ -35,7 +37,7 @@ class UserProfileInline(admin.TabularInline):
 
 
 @admin.register(Company)
-class CompanyAdmin(admin.ModelAdmin):
+class CompanyAdmin(ModelAdmin):
     """
     The main control hub for a corporate client entity.
     Gathers locations, buyers, and financial states into a single screen.
@@ -59,7 +61,7 @@ class CompanyAdmin(admin.ModelAdmin):
 
 
 @admin.register(CompanyLocation)
-class CompanyLocationAdmin(admin.ModelAdmin):
+class CompanyLocationAdmin(ModelAdmin):
     """
     A fallback list view dedicated to auditing shipping points 
     and fast tracking tax compliance flags across regions.
@@ -90,17 +92,21 @@ class CompanyLocationAdmin(admin.ModelAdmin):
 
 
 @admin.register(UserProfile)
-class CustomUserProfileAdmin(UserAdmin):
+class CustomUserProfileAdmin(BaseUserAdmin, ModelAdmin):
     """
     Enterprise modification of Django's default User system interface.
     Integrates our customized role options and target company connections cleanly.
     """
+    form = UserChangeForm
+    add_form = UserCreationForm
+    change_password_form = AdminPasswordChangeForm
+
     list_display = ('username', 'email', 'get_company_name', 'role', 'is_staff', 'is_active')
     list_filter = ('role', 'is_staff', 'is_active')
     search_fields = ('username', 'first_name', 'last_name', 'email', 'company__legal_name')
 
     # Append our custom corporate link blocks directly into the User detail fields view
-    fieldsets = UserAdmin.fieldsets + (
+    fieldsets = BaseUserAdmin.fieldsets + (
         (_('B2B Organizational Context'), {
             'fields': ('company', 'role'),
         }),

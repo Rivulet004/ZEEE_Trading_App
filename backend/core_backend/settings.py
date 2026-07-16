@@ -88,6 +88,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # ==============================================================================
 INSTALLED_APPS = [
     # Core Native Framework modules
+    'unfold',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -105,6 +106,31 @@ INSTALLED_APPS = [
     'accounts.apps.AccountsConfig',
     'products.apps.ProductsConfig',
 ]
+
+UNFOLD = {
+    "SITE_TITLE": "ZEEE Admin Dashboard",
+    "SITE_HEADER": "ZEEE Operations Center",
+    "SITE_SYMBOL": "bolt",
+    "SHOW_HISTORY": True,
+    "SHOW_SIDEBAR_FILTER": True,
+    "SIDEBAR": {
+        "show_search": True,
+        "show_all_applications": True,
+        "navigation": [
+            {
+                "title": "Warehouse Logistics",
+                "separator": True,
+                "items": [
+                    {
+                        "title": "Dispatcher Portal",
+                        "icon": "local_shipping",
+                        "link": "/dispatcher/",
+                    }
+                ]
+            }
+        ]
+    }
+}
 
 
 # ==============================================================================
