@@ -27,11 +27,13 @@ class AuthProvider extends ChangeNotifier {
     apiClient.onAuthFailure = logout;
   }
 
-  void loginAsGuest(String zipCode) {
+  Future<void> loginAsGuest(String zipCode) async {
     _isGuest = true;
     _guestZipCode = zipCode;
     _isAuthenticated = false;
     _userProfile = null;
+    await _storage.delete(key: 'access_token');
+    await _storage.delete(key: 'refresh_token');
     notifyListeners();
   }
 

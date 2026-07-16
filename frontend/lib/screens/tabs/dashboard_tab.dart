@@ -43,6 +43,8 @@ class _DashboardTabState extends State<DashboardTab> {
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
     final catalogProvider = Provider.of<CatalogProvider>(context, listen: false);
 
+    catalogProvider.fetchAlerts();
+
     if (cartProvider.selectedLocation != null) {
       cartProvider.fetchDeliverySchedule(cartProvider.selectedLocation!['zip_code']).then((_) {
         _updateCountdown();
@@ -117,8 +119,10 @@ class _DashboardTabState extends State<DashboardTab> {
     final items = order['items'] as List?;
     if (items != null) {
       for (var item in items) {
-        final sku = item['sku'];
+        final sku = item['product_sku'];
         final qty = item['quantity'] ?? 1;
+
+        if (sku == null) continue;
 
         // Resolve product baseline details from local catalog
         final prod = catalogProvider.products.firstWhere(
@@ -200,32 +204,53 @@ class _DashboardTabState extends State<DashboardTab> {
           const SizedBox(height: 20),
 
           // 2. Active Delay Alerts Banner
-          Text(
-            'ACTIVE DELAY ALERTS',
-            style: TextStyle(color: themeProvider.textSecondary, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: themeProvider.errorColor.withOpacity(0.08),
-              border: Border.all(color: themeProvider.errorColor.withOpacity(0.4), width: 0.8),
-              borderRadius: BorderRadius.circular(8),
+          if (catalogProvider.alerts.isNotEmpty) ...[
+            Text(
+              'ACTIVE SYSTEM ALERTS',
+              style: TextStyle(color: themeProvider.textSecondary, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1),
             ),
-            child: Row(
-              children: [
-                Icon(Icons.warning_amber_outlined, color: themeProvider.errorColor, size: 24),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Labor Day Notice: Normal Monday delivery routes are rescheduled to Tuesday. Order guide calculations adjusted.',
-                    style: TextStyle(color: themeProvider.textPrimary, fontSize: 12, height: 1.4),
-                  ),
+            const SizedBox(height: 8),
+            ...catalogProvider.alerts.map((alert) {
+              final severity = alert['severity'] ?? 'WARNING';
+              final message = alert['message'] ?? '';
+              
+              Color alertColor;
+              IconData alertIcon;
+              if (severity == 'CRITICAL') {
+                alertColor = themeProvider.errorColor;
+                alertIcon = Icons.error_outline;
+              } else if (severity == 'INFO') {
+                alertColor = themeProvider.primaryAccent;
+                alertIcon = Icons.info_outline;
+              } else {
+                alertColor = themeProvider.isDark ? const Color(0xFFF59E0B) : Colors.orange; // Warning/Amber
+                alertIcon = Icons.warning_amber_outlined;
+              }
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: alertColor.withOpacity(0.08),
+                  border: Border.all(color: alertColor.withOpacity(0.4), width: 0.8),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
+                child: Row(
+                  children: [
+                    Icon(alertIcon, color: alertColor, size: 24),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        message,
+                        style: TextStyle(color: themeProvider.textPrimary, fontSize: 12, height: 1.4),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+            const SizedBox(height: 12),
+          ],
 
           // 3. Quick Reorder Panel
           Row(

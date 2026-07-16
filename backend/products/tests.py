@@ -724,3 +724,65 @@ class RouteDeliverySchedulingTests(APITestCase):
         response = self.client.post(self.checkout_url, payload, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("The selected delivery date is not available", response.data["error"])
+
+
+class SystemAlertAPITests(APITestCase):
+    """
+    Verifies that system alerts are retrieved properly, and respects
+    active filters and the 15-day range constraint.
+    """
+
+    def setUp(self):
+        from products.models import SystemAlert
+        from django.utils import timezone
+        from datetime import timedelta
+
+        self.alerts_url = reverse('api_alerts_list')
+
+        # 1. Active alert created now (should be returned)
+        self.alert_now = SystemAlert.objects.create(
+            message="Alert created now",
+            severity="WARNING",
+            is_active=True
+        )
+
+        # 2. Inactive alert created now (should not be returned)
+        self.alert_inactive = SystemAlert.objects.create(
+            message="Alert inactive",
+            severity="CRITICAL",
+            is_active=False
+        )
+
+        # 3. Active alert created 10 days ago (should be returned)
+        self.alert_10_days = SystemAlert.objects.create(
+            message="Alert 10 days ago",
+            severity="INFO",
+            is_active=True
+        )
+        # Manually override created_at to bypass auto_now_add on save
+        SystemAlert.objects.filter(pk=self.alert_10_days.pk).update(
+            created_at=timezone.now() - timedelta(days=10)
+        )
+
+        # 4. Active alert created 16 days ago (should not be returned)
+        self.alert_16_days = SystemAlert.objects.create(
+            message="Alert 16 days ago",
+            severity="WARNING",
+            is_active=True
+        )
+        SystemAlert.objects.filter(pk=self.alert_16_days.pk).update(
+            created_at=timezone.now() - timedelta(days=16)
+        )
+
+    def test_alert_list_retrieval(self):
+        response = self.client.get(self.alerts_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        # Should only return alert_now and alert_10_days
+        self.assertEqual(len(response.data), 2)
+        
+        messages = [a['message'] for a in response.data]
+        self.assertIn("Alert created now", messages)
+        self.assertIn("Alert 10 days ago", messages)
+        self.assertNotIn("Alert inactive", messages)
+        self.assertNotIn("Alert 16 days ago", messages)

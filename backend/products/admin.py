@@ -9,7 +9,8 @@ from .models import (
     CSVImportRowError, 
     LogisticsWebhookTarget,
     Category,
-    ZipCodeRouteRule
+    ZipCodeRouteRule,
+    SystemAlert
 )
 
 class ZipCodePricingInline(admin.TabularInline):
@@ -270,3 +271,14 @@ class CategoryAdmin(admin.ModelAdmin):
 class ZipCodeRouteRuleAdmin(admin.ModelAdmin):
     list_display = ('zip_code', 'delivery_days', 'cutoff_time')
     search_fields = ('zip_code',)
+
+
+@admin.register(SystemAlert)
+class SystemAlertAdmin(admin.ModelAdmin):
+    list_display = ('severity', 'message_snippet', 'is_active', 'created_at')
+    list_filter = ('severity', 'is_active', 'created_at')
+    search_fields = ('message',)
+
+    def message_snippet(self, obj):
+        return obj.message[:50]
+    message_snippet.short_description = "Message"

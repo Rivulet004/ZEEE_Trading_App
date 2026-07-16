@@ -10,6 +10,7 @@ class CatalogProvider extends ChangeNotifier {
   List<dynamic> _orderHistory = [];
   List<dynamic> _categories = [];
   List<dynamic> _orderGuide = [];
+  List<dynamic> _alerts = [];
 
   int _totalCount = 0;
   int _totalPages = 1;
@@ -25,6 +26,7 @@ class CatalogProvider extends ChangeNotifier {
   List<dynamic> get orderHistory => _orderHistory;
   List<dynamic> get categories => _categories;
   List<dynamic> get orderGuide => _orderGuide;
+  List<dynamic> get alerts => _alerts;
 
   int get totalCount => _totalCount;
   int get totalPages => _totalPages;
@@ -169,5 +171,18 @@ class CatalogProvider extends ChangeNotifier {
     }
 
     _setLoading(false);
+  }
+
+  // Fetches active alerts from server
+  Future<void> fetchAlerts() async {
+    try {
+      final response = await apiClient.dio.get('/api/v1/alerts/');
+      if (response.statusCode == 200) {
+        _alerts = response.data;
+        notifyListeners();
+      }
+    } catch (e) {
+      _setError(e.toString());
+    }
   }
 }

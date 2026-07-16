@@ -538,6 +538,32 @@ class _ProfileTabState extends State<ProfileTab> {
                 );
               }).toList(),
             ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: () async {
+              await authProvider.logout();
+              if (context.mounted) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: themeProvider.isDark ? const Color(0xFF1E1E24) : const Color(0xFFF1F5F9),
+              foregroundColor: themeProvider.errorColor,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              side: BorderSide(color: themeProvider.errorColor.withOpacity(0.3), width: 0.5),
+              elevation: 0,
+            ),
+            icon: const Icon(Icons.logout, size: 18),
+            label: const Text(
+              'SIGN OUT SESSION',
+              style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.8),
+            ),
+          ),
+          const SizedBox(height: 20),
         ],
       ),
     );

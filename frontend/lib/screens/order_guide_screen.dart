@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/catalog_provider.dart';
 import '../providers/cart_provider.dart';
 import '../providers/theme_provider.dart';
+import '../providers/auth_provider.dart';
 
 class OrderGuideTab extends StatefulWidget {
   const OrderGuideTab({super.key});
@@ -16,9 +17,12 @@ class _OrderGuideTabState extends State<OrderGuideTab> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final cartProvider = Provider.of<CartProvider>(context, listen: false);
-      final locationId = cartProvider.selectedLocation?['id'];
-      Provider.of<CatalogProvider>(context, listen: false).fetchOrderGuide(locationId: locationId);
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (!authProvider.isGuest) {
+        final cartProvider = Provider.of<CartProvider>(context, listen: false);
+        final locationId = cartProvider.selectedLocation?['id'];
+        Provider.of<CatalogProvider>(context, listen: false).fetchOrderGuide(locationId: locationId);
+      }
     });
   }
 

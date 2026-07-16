@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 - **One-Tap Quick Reorder:** Rapid order duplicates panel for the last 3 purchase orders.
 - **Credit Progress Visuals:** Progress bars tracking corporate debt and cart limits warning levels.
 - **Branch facility switcher dropdown & Order status steppers:** Embedded directly inside the new Profile settings tab.
+- **Dynamic System Alerts Registry:** Added backend model and `/api/v1/alerts/` endpoint, filtering active alerts to show only those created within the last 15 days, color-coded by severity (INFO, WARNING, CRITICAL) in the dashboard banner.
 
 ---
 

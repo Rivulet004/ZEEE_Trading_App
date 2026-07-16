@@ -19,6 +19,7 @@ class MainNavigationContainer extends StatefulWidget {
 
 class _MainNavigationContainerState extends State<MainNavigationContainer> {
   int _currentIndex = 2; // Default starting point is Tab 2: Catalog
+  final List<bool> _initializedTabs = [false, false, true, false, false];
 
   void _changeTab(int index) {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -31,6 +32,7 @@ class _MainNavigationContainerState extends State<MainNavigationContainer> {
 
     setState(() {
       _currentIndex = index;
+      _initializedTabs[index] = true;
     });
   }
 
@@ -169,7 +171,9 @@ class _MainNavigationContainerState extends State<MainNavigationContainer> {
       ),
       body: IndexedStack(
         index: _currentIndex,
-        children: tabs,
+        children: List.generate(tabs.length, (index) {
+          return _initializedTabs[index] ? tabs[index] : const SizedBox.shrink();
+        }),
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,

@@ -474,3 +474,31 @@ class ZipCodeDeliveryRouteView(APIView):
                 {"error": f"Failed resolving route parameters: {str(e)}"}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class SystemAlertListView(APIView):
+    """
+    Returns active alerts posted within the last 15 days.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        from datetime import timedelta
+        from django.utils import timezone
+        from .models import SystemAlert
+
+        cutoff_date = timezone.now() - timedelta(days=15)
+        alerts = SystemAlert.objects.filter(
+            is_active=True,
+            created_at__gte=cutoff_date
+        ).order_by('-created_at')
+
+        data = []
+        for alert in alerts:
+            data.append({
+                "id": alert.id,
+                "message": alert.message,
+                "severity": alert.severity,
+                "created_at": alert.created_at.isoformat(),
+            })
+        return Response(data, status=status.HTTP_200_OK)

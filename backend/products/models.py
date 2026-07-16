@@ -271,3 +271,23 @@ class ZipCodeRouteRule(models.Model):
 
     def __str__(self):
         return f"ZIP {self.zip_code} Delivery Days: {self.delivery_days} Cut-off: {self.cutoff_time}"
+
+
+class SystemAlert(models.Model):
+    SEVERITY_CHOICES = [
+        ('INFO', 'Information'),
+        ('WARNING', 'Warning'),
+        ('CRITICAL', 'Critical Delay'),
+    ]
+    message = models.TextField()
+    severity = models.CharField(max_length=10, choices=SEVERITY_CHOICES, default='WARNING')
+    is_active = models.BooleanField(default=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = "System Alert"
+        verbose_name_plural = "System Alerts"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"[{self.severity}] {self.message[:30]}"

@@ -33,7 +33,8 @@ from products.views import (
     ProductCatalogListView,
     ProductCategoryListView,
     OrderGuideListView,
-    ZipCodeDeliveryRouteView
+    ZipCodeDeliveryRouteView,
+    SystemAlertListView
 )
 
 urlpatterns = [
@@ -61,4 +62,5 @@ urlpatterns = [
     path('api/v1/categories/', ProductCategoryListView.as_view(), name='api_categories_list'),
     path('api/v1/products/order-guide/', OrderGuideListView.as_view(), name='api_order_guide'),
     path('api/v1/delivery-route/', ZipCodeDeliveryRouteView.as_view(), name='api_delivery_route'),
+    path('api/v1/alerts/', SystemAlertListView.as_view(), name='api_alerts_list'),
 ]

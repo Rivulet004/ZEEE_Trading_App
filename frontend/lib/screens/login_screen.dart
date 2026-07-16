@@ -100,15 +100,17 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Text('CANCEL', style: TextStyle(color: themeProvider.textSecondary)),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               if (formKey.currentState!.validate()) {
                 final zip = zipController.text.trim();
                 Navigator.pop(context); // Close dialog
-                authProvider.loginAsGuest(zip);
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => const MainNavigationContainer()),
-                );
+                await authProvider.loginAsGuest(zip);
+                if (context.mounted) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => const MainNavigationContainer()),
+                  );
+                }
               }
             },
             style: ElevatedButton.styleFrom(
