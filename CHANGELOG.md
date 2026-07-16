@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Release 1.4.0] - 2026-07-16
+
+### Added
+- **Logistics Dispatcher Portal:** Built a separate web-based control panel at `/dispatcher/` for warehouse operators with split-pane lists, automatic 3-second AJAX polling updates, and a background print engine.
+- **Background PDF Print Spooling:** Enabled dual options in the dispatcher detail view: **View PDF** (opens PDF in a new tab) and **Print Directly** (spools print command in a hidden background iframe without leaving the tab).
+- **Real-Time Flutter App Synchronization:** Configured a silent background refresh timer and manual pull-to-refresh indicator in the order history screen, syncing dispatcher status updates in real-time.
+- **Cart Duplication Overwrite Warning:** Added pop-up overwrite warning prompts in the mobile dashboard tab if duplicating a past order when the shopping cart already contains items.
+- **Checkout Date Validation Guidance:** Enabled the "Authorize Purchase Order" button to remain active if the delivery date is not yet chosen, guiding the user via a SnackBar validation prompt instead.
+
+---
+
 ## [Release 1.3.0] - 2026-07-16
 
 ### Added
