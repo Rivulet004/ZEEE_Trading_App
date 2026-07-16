@@ -75,9 +75,9 @@ class UserProfile(AbstractUser):
         'unique': _("An authenticated profile with this email address already exists."),
     })
     
-    # Connections to corporate layers
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="employees", null=True, blank=True)
     role = models.CharField(max_length=10, choices=UserRoles.choices, default=UserRoles.BUYER)
+    phone_number = models.CharField(max_length=20, blank=True, null=True, help_text="Primary contact phone number.")
 
     REQUIRED_FIELDS = ['email']
 

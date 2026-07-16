@@ -102,13 +102,13 @@ class AuthProvider extends ChangeNotifier {
     return false;
   }
 
-  // Registers a brand new corporate entity and owner profile
   Future<bool> register({
     required String username,
     required String password,
     required String email,
     required String firstName,
     required String lastName,
+    String? phoneNumber,
     required String companyName,
     required String corporateEmail,
     required String locationName,
@@ -125,6 +125,7 @@ class AuthProvider extends ChangeNotifier {
       "email": email,
       "first_name": firstName,
       "last_name": lastName,
+      if (phoneNumber != null && phoneNumber.isNotEmpty) "phone_number": phoneNumber,
       "company_name": companyName,
       "corporate_email": corporateEmail,
       "location_data": {

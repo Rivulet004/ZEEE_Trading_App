@@ -27,7 +27,7 @@ class EnterpriseRegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['username', 'password', 'email', 'first_name', 'last_name', 'company_name', 'corporate_email', 'location_data']
+        fields = ['username', 'password', 'email', 'first_name', 'last_name', 'phone_number', 'company_name', 'corporate_email', 'location_data']
 
     def validate_email(self, value):
         if User.objects.filter(email__iexact=value).exists():
@@ -88,7 +88,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'company_name', 'credit_limit', 'outstanding_balance']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'phone_number', 'company_name', 'credit_limit', 'outstanding_balance']
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):

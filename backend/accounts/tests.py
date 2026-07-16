@@ -45,6 +45,7 @@ class AccountsSystemTests(APITestCase):
             "email": "owner@newcorp.com",
             "first_name": "John",
             "last_name": "Doe",
+            "phone_number": "1-800-555-0199",
             "company_name": "New Corp Foods LLC",
             "corporate_email": "ops@newcorp.com",
             "location_data": {
@@ -62,6 +63,7 @@ class AccountsSystemTests(APITestCase):
         self.assertIn("user", response.data)
         self.assertEqual(response.data["user"]["username"], "new_b2b_admin")
         self.assertEqual(response.data["user"]["company_name"], "New Corp Foods LLC")
+        self.assertEqual(response.data["user"]["phone_number"], "1-800-555-0199")
 
         # Verify DB states
         company_exists = Company.objects.filter(legal_name="New Corp Foods LLC").exists()
@@ -69,6 +71,7 @@ class AccountsSystemTests(APITestCase):
         
         user = User.objects.get(username="new_b2b_admin")
         self.assertEqual(user.email, "owner@newcorp.com")
+        self.assertEqual(user.phone_number, "1-800-555-0199")
         self.assertEqual(user.role, User.UserRoles.ADMIN)
         self.assertEqual(user.company.legal_name, "New Corp Foods LLC")
         

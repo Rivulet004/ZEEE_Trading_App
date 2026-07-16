@@ -19,6 +19,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
 
   // Company Details
@@ -39,6 +40,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _emailController.dispose();
     _firstNameController.dispose();
     _lastNameController.dispose();
+    _phoneController.dispose();
     _passwordController.dispose();
     _companyNameController.dispose();
     _corporateEmailController.dispose();
@@ -59,6 +61,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       email: _emailController.text.trim(),
       firstName: _firstNameController.text.trim(),
       lastName: _lastNameController.text.trim(),
+      phoneNumber: _phoneController.text.trim(),
       companyName: _companyNameController.text.trim(),
       corporateEmail: _corporateEmailController.text.trim(),
       locationName: _locationNameController.text.trim().isNotEmpty 
@@ -272,6 +275,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       controller: _lastNameController,
                       label: 'Last Name',
                       icon: Icons.badge_outlined,
+                      themeProvider: themeProvider,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildTextField(
+                      controller: _phoneController,
+                      label: 'Primary Contact Phone',
+                      icon: Icons.phone_outlined,
+                      keyboardType: TextInputType.phone,
                       themeProvider: themeProvider,
                     ),
                     const SizedBox(height: 16),
