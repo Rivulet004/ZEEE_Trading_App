@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [Release 1.2.0] - 2026-07-16
+
+### Added
+- **Route Delivery Calendars & Order Cut-off Times:** Added route schedules to the backend ZIP code matrix (`ZipCodeRouteRule`). Implemented a native calendar date picker on checkout, automatically graying out weekends/unscheduled weekdays and dates violating the daily warehouse 4:00 PM cut-off.
+- **Chef's Shopping Order Guide:** Added `/api/v1/products/order-guide/` frequency-aggregation endpoint and a dedicated high-density list screen in Flutter with inline steppers.
+- **Commercial Credit Limits & Net Terms:** Added `credit_limit` and `outstanding_balance` parameters to the `Company` model and enforced checks in `InventoryCheckoutView` to reject PO checkouts exceeding available corporate credit. Added warning banners and checkout block parameters on the cart screen.
+- **Branch Location Creation:** Added POST method to `/api/accounts/locations/` and a "Register New Shipping Hub" floating action button dialog on the frontend branch picker.
+- **Guest Catalog Bypass:** Added guest catalog preview access by inputting a delivery ZIP code on the login screen. Bypasses login to show catalog and regional pricing overrides, showing warnings when trying to perform checkout.
+- **Dynamic Database Categories:** Mapped categories chip selectors dynamically to active database rows fetched from `/api/v1/categories/`.
+- **User Phone Number:** Added `phone_number` parameter to `UserProfile` model, profile/registration serializers, and the signup stepper.
+
+---
+
 ## [Frontend Release] - 2026-07-14
 
 ### Added
