@@ -17,6 +17,8 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from django.contrib.auth import views as auth_views
+from django.conf import settings
+from django.conf.urls.static import static
 from accounts.views import (
     EnterpriseRegisterView, 
     CustomTokenObtainPairView, 
@@ -64,3 +66,6 @@ urlpatterns = [
     path('api/v1/delivery-route/', ZipCodeDeliveryRouteView.as_view(), name='api_delivery_route'),
     path('api/v1/alerts/', SystemAlertListView.as_view(), name='api_alerts_list'),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
