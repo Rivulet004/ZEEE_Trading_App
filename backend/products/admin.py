@@ -231,8 +231,8 @@ class OrderItemInline(TabularInline):
 
 @admin.register(Order)
 class OrderAdmin(ModelAdmin):
-    list_display = ('id', 'get_company_name', 'status', 'total_amount', 'created_at')
-    list_filter = ('status', 'created_at')
+    list_display = ('id', 'get_company_name', 'status', 'payment_method', 'total_amount', 'created_at')
+    list_filter = ('status', 'payment_method', 'created_at')
     search_fields = ('id', 'user__username', 'sales_tax_id_snapshot')
     readonly_fields = ('user', 'location', 'delivery_address_snapshot', 'sales_tax_id_snapshot', 'total_amount', 'tax_amount', 'created_at')
     inlines = [OrderItemInline]

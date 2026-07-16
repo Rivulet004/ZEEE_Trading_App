@@ -262,6 +262,62 @@ class CheckoutEngineTests(APITestCase):
         self.product_1.refresh_from_db()
         self.assertEqual(self.product_1.stock_quantity, 50)
 
+    def test_checkout_with_credit_card_bypasses_credit_limit(self):
+        """Verifies checking out with credit card succeeds even if it exceeds the credit limit."""
+        self.client.force_authenticate(user=self.user_a)
+        
+        self.company_a.credit_limit = 200.00
+        self.company_a.outstanding_balance = 100.00
+        self.company_a.save()
+        
+        payload = {
+            "location_id": self.location_a.id,
+            "delivery_date": self._get_valid_future_date_str(),
+            "payment_method": "CREDIT_CARD",
+            "items": [
+                {"sku": "SKU-ZEEE-01", "quantity": 2} # 2 * $85.00 contract rate = $170.00
+            ]
+        }
+        
+        response = self.client.post(self.checkout_url, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        
+        # Verify outstanding balance remains unchanged because payment is immediate
+        self.company_a.refresh_from_db()
+        self.assertEqual(self.company_a.outstanding_balance, 100.00)
+        
+        # Verify order instance has correct payment method saved
+        order = Order.objects.get(id=response.data["order_id"])
+        self.assertEqual(order.payment_method, Order.PaymentMethod.CREDIT_CARD)
+
+    def test_checkout_with_ach_bypasses_credit_limit(self):
+        """Verifies checking out with ACH bank transfer succeeds even if it exceeds the credit limit."""
+        self.client.force_authenticate(user=self.user_a)
+        
+        self.company_a.credit_limit = 200.00
+        self.company_a.outstanding_balance = 100.00
+        self.company_a.save()
+        
+        payload = {
+            "location_id": self.location_a.id,
+            "delivery_date": self._get_valid_future_date_str(),
+            "payment_method": "ACH",
+            "items": [
+                {"sku": "SKU-ZEEE-01", "quantity": 2} # 2 * $85.00 contract rate = $170.00
+            ]
+        }
+        
+        response = self.client.post(self.checkout_url, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        
+        # Verify outstanding balance remains unchanged because payment is immediate
+        self.company_a.refresh_from_db()
+        self.assertEqual(self.company_a.outstanding_balance, 100.00)
+        
+        # Verify order instance has correct payment method saved
+        order = Order.objects.get(id=response.data["order_id"])
+        self.assertEqual(order.payment_method, Order.PaymentMethod.ACH)
+
     def test_catalog_anonymous_allowed(self):
         """Verifies anonymous access to catalog list is allowed (guest bypass)."""
         url = reverse('api_products_list')

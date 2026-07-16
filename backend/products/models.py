@@ -123,6 +123,11 @@ class Order(models.Model):
         DELIVERED = 'DELIVERED', 'Fulfillment Complete'
         CANCELLED = 'CANCELLED', 'Void / Cancelled'
 
+    class PaymentMethod(models.TextChoices):
+        NET_30 = 'NET_30', 'Net 30 Terms'
+        CREDIT_CARD = 'CREDIT_CARD', 'Credit / Debit Card'
+        ACH = 'ACH', 'ACH Bank Transfer'
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, 
         on_delete=models.PROTECT, 
@@ -137,6 +142,12 @@ class Order(models.Model):
         max_length=15, 
         choices=OrderStatus.choices, 
         default=OrderStatus.PENDING, 
+        db_index=True
+    )
+    payment_method = models.CharField(
+        max_length=20,
+        choices=PaymentMethod.choices,
+        default=PaymentMethod.NET_30,
         db_index=True
     )
     

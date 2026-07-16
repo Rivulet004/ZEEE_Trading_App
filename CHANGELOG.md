@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Release 1.5.0] - 2026-07-16
+
+### Added
+- **Django Unfold Admin Overhaul:** Restyled the Django administrative backend with a premium Tailwind CSS theme. Configured auto/manual dark mode toggles, customized model registration interfaces, and registered customized Material Icon sidebar shortcuts.
+- **Cart Payment Options (Flutter & Django):** Integrated multiple checkout payment methods (**Net 30 Terms**, **Credit/Debit Card**, and **ACH Bank Transfer**) in the Cart tab.
+- **Credit Limit Bypass Logic:** Reconfigured `InventoryCheckoutView` to skip outstanding balance limits and debt checks for immediate Card/ACH transactions, allowing over-limit accounts to checkout.
+- **Dynamic Conditional Inputs:** Added slide-open forms with input validations for card details (Number, Expiry, CVV) and ACH routing credentials inside the Flutter Cart screen.
+
+---
+
 ## [Release 1.4.0] - 2026-07-16
 
 ### Added

@@ -25,6 +25,13 @@ class CartProvider extends ChangeNotifier {
   DateTime? get selectedDeliveryDate => _selectedDeliveryDate;
   Map<String, dynamic>? get deliverySchedule => _deliverySchedule;
   Map<String, int> get items => _items;
+  String _selectedPaymentMethod = 'NET_30';
+  String get selectedPaymentMethod => _selectedPaymentMethod;
+
+  void setSelectedPaymentMethod(String method) {
+    _selectedPaymentMethod = method;
+    notifyListeners();
+  }
 
   CartProvider(this.apiClient);
 
@@ -114,6 +121,7 @@ class CartProvider extends ChangeNotifier {
     _prices.clear();
     _selectedDeliveryDate = null;
     _deliverySchedule = null;
+    _selectedPaymentMethod = 'NET_30';
     notifyListeners();
   }
 
@@ -174,6 +182,7 @@ class CartProvider extends ChangeNotifier {
     final payload = {
       "location_id": _selectedLocation!["id"],
       "delivery_date": dateStr,
+      "payment_method": _selectedPaymentMethod,
       "items": _items.entries.map((e) => {"sku": e.key, "quantity": e.value}).toList()
     };
 

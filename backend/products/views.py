@@ -63,6 +63,19 @@ class InventoryCheckoutView(APIView):
         user = request.user
         location_id = request.data.get('location_id')
         cart_items = request.data.get('items', [])  # Expects list: [{"sku": "...", "quantity": 2}]
+        payment_method = request.data.get('payment_method', 'NET_30').upper()
+
+        if payment_method not in ['NET_30', 'CREDIT_CARD', 'ACH']:
+            return Response(
+                {"error": f"Invalid payment method specified: {payment_method}."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if payment_method == 'NET_30' and not user.company:
+            return Response(
+                {"error": "Net 30 Terms are only available for authorized corporate client accounts."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         if not location_id or not cart_items:
             return Response(
@@ -161,19 +174,20 @@ class InventoryCheckoutView(APIView):
                         "price_paid": price_paid
                     })
 
-                # Verify corporate credit limits
-                company = user.company
-                if company:
-                    from accounts.models import Company
-                    locked_company = Company.objects.select_for_update().get(id=company.id)
-                    new_balance = locked_company.outstanding_balance + total_order_amount
-                    if new_balance > locked_company.credit_limit:
-                        raise CheckoutError(
-                            f"Purchase Order exceeds your commercial credit limit. Required: ${total_order_amount:.2f}. Available credit: ${(locked_company.credit_limit - locked_company.outstanding_balance):.2f}.",
-                            status.HTTP_400_BAD_REQUEST
-                        )
-                    locked_company.outstanding_balance = new_balance
-                    locked_company.save()
+                # Verify corporate credit limits (Only if charging to corporate credit line)
+                if payment_method == 'NET_30':
+                    company = user.company
+                    if company:
+                        from accounts.models import Company
+                        locked_company = Company.objects.select_for_update().get(id=company.id)
+                        new_balance = locked_company.outstanding_balance + total_order_amount
+                        if new_balance > locked_company.credit_limit:
+                            raise CheckoutError(
+                                f"Purchase Order exceeds your commercial credit limit. Required: ${total_order_amount:.2f}. Available credit: ${(locked_company.credit_limit - locked_company.outstanding_balance):.2f}.",
+                                status.HTTP_400_BAD_REQUEST
+                            )
+                        locked_company.outstanding_balance = new_balance
+                        locked_company.save()
 
                 # Create the master transaction envelope record
                 master_order = Order.objects.create(
@@ -182,7 +196,8 @@ class InventoryCheckoutView(APIView):
                     delivery_address_snapshot=address_snapshot,
                     sales_tax_id_snapshot=tax_snapshot,
                     delivery_date=delivery_date,
-                    total_amount=total_order_amount
+                    total_amount=total_order_amount,
+                    payment_method=payment_method
                 )
 
                 # Commit all queued items pointing back to the master envelope ID
