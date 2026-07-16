@@ -777,21 +777,28 @@
             if (!iframe) {
                 iframe = document.createElement('iframe');
                 iframe.id = 'printIframe';
-                iframe.style.position = 'fixed';
-                iframe.style.right = '0';
-                iframe.style.bottom = '0';
-                iframe.style.width = '0';
-                iframe.style.height = '0';
+                iframe.style.position = 'absolute';
+                iframe.style.left = '-9999px';
+                iframe.style.top = '-9999px';
+                iframe.style.width = '1024px';
+                iframe.style.height = '768px';
                 iframe.style.border = '0';
                 document.body.appendChild(iframe);
             }
             
             iframe.src = `/dispatcher/order/${orderId}/invoice/`;
             
-            iframe.onload = function() {
-                iframe.contentWindow.focus();
-                iframe.contentWindow.print();
-            };
+            // Wait 1.5 seconds for PDF plugin to parse and render off-screen,
+            // then invoke the printing workflow
+            setTimeout(() => {
+                try {
+                    iframe.contentWindow.focus();
+                    iframe.contentWindow.print();
+                } catch (e) {
+                    console.error("Direct print failed, falling back to open tab:", e);
+                    window.open(`/dispatcher/order/${orderId}/invoice/`, '_blank');
+                }
+            }, 1500);
         }
 
         // Initial Load and Setup Interval looping (Every 3 seconds)
