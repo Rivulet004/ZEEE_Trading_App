@@ -12,6 +12,7 @@ class AuthProvider extends ChangeNotifier {
   String? _guestZipCode;
   String? _errorMessage;
   Map<String, dynamic>? _userProfile;
+  List<dynamic> _teamMembers = [];
 
   bool get isLoading => _isLoading;
   bool get isAuthenticated => _isAuthenticated;
@@ -19,6 +20,7 @@ class AuthProvider extends ChangeNotifier {
   String? get guestZipCode => _guestZipCode;
   String? get errorMessage => _errorMessage;
   Map<String, dynamic>? get userProfile => _userProfile;
+  List<dynamic> get teamMembers => _teamMembers;
 
   AuthProvider(this.apiClient) {
     // Listen to token refresh failures from the api client to force a sign-out
@@ -181,6 +183,74 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> fetchTeam() async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final response = await apiClient.dio.get('/api/accounts/team/');
+      if (response.statusCode == 200) {
+        _teamMembers = response.data;
+      }
+    } catch (e) {
+      _setError(_parseError(e));
+    }
+    _setLoading(false);
+  }
+
+  Future<bool> addTeamMember({
+    required String username,
+    required String email,
+    required String password,
+    String? firstName,
+    String? lastName,
+    String? phoneNumber,
+    required String role,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final payload = {
+        "username": username,
+        "email": email,
+        "password": password,
+        "first_name": firstName ?? "",
+        "last_name": lastName ?? "",
+        "phone_number": phoneNumber ?? "",
+        "role": role,
+      };
+      final response = await apiClient.dio.post(
+        '/api/accounts/team/',
+        data: payload,
+      );
+      if (response.statusCode == 201) {
+        await fetchTeam(); // Refresh roster list
+        _setLoading(false);
+        return true;
+      }
+    } catch (e) {
+      _setError(_parseError(e));
+    }
+    _setLoading(false);
+    return false;
+  }
+
+  Future<bool> deleteTeamMember(int id) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final response = await apiClient.dio.delete('/api/accounts/team/$id/');
+      if (response.statusCode == 200) {
+        await fetchTeam(); // Refresh roster list
+        _setLoading(false);
+        return true;
+      }
+    } catch (e) {
+      _setError(_parseError(e));
+    }
+    _setLoading(false);
+    return false;
+  }
+
   // Clears active sessions and delete secure storage keys
   Future<void> logout() async {
     await _storage.delete(key: 'access_token');
@@ -189,6 +259,7 @@ class AuthProvider extends ChangeNotifier {
     _isGuest = false;
     _guestZipCode = null;
     _userProfile = null;
+    _teamMembers = [];
     notifyListeners();
   }
 

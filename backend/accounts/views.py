@@ -120,3 +120,132 @@ class CompanyLocationListView(APIView):
             serializer.save(company=request.user.company)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CompanyTeamListView(APIView):
+    """
+    Roster management endpoint. Allows company administrators to view, add, and remove 
+    team members under their corporate company profile.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        # Verify the user has ADMIN rights for their company
+        if user.role != 'ADMIN':
+            return Response(
+                {"error": "Only corporate administrators can query the team roster."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        if not user.company:
+            return Response([], status=status.HTTP_200_OK)
+
+        employees = user.company.employees.all().order_by('username')
+        serializer = UserProfileSerializer(employees, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        user = request.user
+        if user.role != 'ADMIN':
+            return Response(
+                {"error": "Only corporate administrators can add team members."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        if not user.company:
+            return Response(
+                {"error": "User does not belong to a registered company."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Deserialize and create new profile associated to this company
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        
+        username = request.data.get('username')
+        email = request.data.get('email')
+        password = request.data.get('password')
+        first_name = request.data.get('first_name', '')
+        last_name = request.data.get('last_name', '')
+        phone_number = request.data.get('phone_number', '')
+        role = request.data.get('role', 'BUYER') # Default to Buyer
+
+        if not username or not email or not password:
+            return Response(
+                {"error": "Username, email, and password parameters are required."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if User.objects.filter(username__iexact=username).exists():
+            return Response(
+                {"username": ["An agent account with this username already exists."]}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if User.objects.filter(email__iexact=email).exists():
+            return Response(
+                {"email": ["An agent account with this email address already exists."]}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Validate role values
+        if role not in [User.UserRoles.ADMIN, User.UserRoles.BUYER, User.UserRoles.VIEWER]:
+            return Response(
+                {"role": ["Invalid role specified."]}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        new_user = User.objects.create_user(
+            username=username,
+            email=email,
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
+            phone_number=phone_number,
+            company=user.company,
+            role=role
+        )
+
+        serializer = UserProfileSerializer(new_user)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class CompanyTeamDetailView(APIView):
+    """
+    Roster detail controls. Allows company admins to deactivate or delete team profiles.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk):
+        user = request.user
+        if user.role != 'ADMIN':
+            return Response(
+                {"error": "Only corporate administrators can delete team members."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        if not user.company:
+            return Response(
+                {"error": "User does not belong to a registered company."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        try:
+            target_user = User.objects.get(pk=pk, company=user.company)
+        except User.DoesNotExist:
+            return Response(
+                {"error": "Team member profile not found."}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Prevent an admin from deleting their own account
+        if target_user.id == user.id:
+            return Response(
+                {"error": "You cannot remove your own administrative login profile."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        target_user.delete()
+        return Response(
+            {"message": "Team member removed successfully."}, 
+            status=status.HTTP_200_OK
+        )

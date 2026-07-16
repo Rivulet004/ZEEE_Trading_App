@@ -14,6 +14,7 @@ All notable changes to this project will be documented in this file.
 - **Guest Catalog Bypass:** Added guest catalog preview access by inputting a delivery ZIP code on the login screen. Bypasses login to show catalog and regional pricing overrides, showing warnings when trying to perform checkout.
 - **Dynamic Database Categories:** Mapped categories chip selectors dynamically to active database rows fetched from `/api/v1/categories/`.
 - **User Phone Number:** Added `phone_number` parameter to `UserProfile` model, profile/registration serializers, and the signup stepper.
+- **B2B Team Member Management:** Added `/api/accounts/team/` and `/api/accounts/team/<id>/` REST endpoints, permitting company administrators to query their employee roster, onboard new logins, assign role flags, and deactivate logins safely from a custom Flutter screen.
 
 ---
 

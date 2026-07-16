@@ -9,6 +9,7 @@ import 'order_history_screen.dart';
 import 'location_picker_screen.dart';
 import 'login_screen.dart';
 import 'order_guide_screen.dart';
+import 'team_management_screen.dart';
 
 class CatalogScreen extends StatefulWidget {
   const CatalogScreen({super.key});
@@ -284,6 +285,18 @@ class _CatalogScreenState extends State<CatalogScreen> {
                 );
               },
             ),
+            if (!authProvider.isGuest && authProvider.userProfile?['role'] == 'ADMIN')
+              ListTile(
+                leading: Icon(Icons.people_outline, color: themeProvider.textPrimary),
+                title: Text('Team Management', style: TextStyle(color: themeProvider.textPrimary)),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const TeamManagementScreen()),
+                  );
+                },
+              ),
             const Spacer(),
             Divider(color: themeProvider.isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
             ListTile(

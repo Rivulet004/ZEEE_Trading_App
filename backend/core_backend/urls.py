@@ -22,7 +22,9 @@ from accounts.views import (
     CustomTokenObtainPairView, 
     CheckTokenView, 
     PasswordResetRequestView,
-    CompanyLocationListView
+    CompanyLocationListView,
+    CompanyTeamListView,
+    CompanyTeamDetailView
 )
 from products.views import (
     ProductPriceEvaluationView, 
@@ -44,6 +46,8 @@ urlpatterns = [
     path('api/accounts/check-token/', CheckTokenView.as_view(), name='api_check_token'),
     path('api/accounts/password-reset/', PasswordResetRequestView.as_view(), name='api_password_reset'),
     path('api/accounts/locations/', CompanyLocationListView.as_view(), name='api_locations_list'),
+    path('api/accounts/team/', CompanyTeamListView.as_view(), name='api_team_list'),
+    path('api/accounts/team/<int:pk>/', CompanyTeamDetailView.as_view(), name='api_team_detail'),
     
     # Native web interface handlers providing the execution screens for inputting new passwords
     path('reset/<uidb64>/<token>/', 

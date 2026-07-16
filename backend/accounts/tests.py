@@ -245,3 +245,90 @@ class AccountsSystemTests(APITestCase):
         }
         response = self.client.post(url, payload, format='json')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_list_team_members_as_admin_succeeds(self):
+        self.client.force_authenticate(user=self.existing_user)
+        url = reverse('api_team_list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Should contain the existing admin user
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["username"], self.existing_user.username)
+
+    def test_list_team_members_as_buyer_fails(self):
+        # Create a user with BUYER role
+        buyer_user = User.objects.create_user(
+            username="buyer_test",
+            email="buyer@zevron.com",
+            password="password123",
+            company=self.existing_company,
+            role=User.UserRoles.BUYER
+        )
+        self.client.force_authenticate(user=buyer_user)
+        url = reverse('api_team_list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_add_team_member_as_admin_succeeds(self):
+        self.client.force_authenticate(user=self.existing_user)
+        url = reverse('api_team_list')
+        payload = {
+            "username": "new_chef",
+            "email": "chef@zevron.com",
+            "password": "password123",
+            "first_name": "Chef",
+            "last_name": "Boyardee",
+            "phone_number": "555-555-5555",
+            "role": "BUYER"
+        }
+        response = self.client.post(url, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["username"], "new_chef")
+        self.assertEqual(response.data["role"], "BUYER")
+
+        # Verify DB
+        new_chef_exists = User.objects.filter(username="new_chef", company=self.existing_company).exists()
+        self.assertTrue(new_chef_exists)
+
+    def test_add_team_member_as_buyer_fails(self):
+        buyer_user = User.objects.create_user(
+            username="buyer_test2",
+            email="buyer2@zevron.com",
+            password="password123",
+            company=self.existing_company,
+            role=User.UserRoles.BUYER
+        )
+        self.client.force_authenticate(user=buyer_user)
+        url = reverse('api_team_list')
+        payload = {
+            "username": "new_chef2",
+            "email": "chef2@zevron.com",
+            "password": "password123",
+            "role": "BUYER"
+        }
+        response = self.client.post(url, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_delete_team_member_as_admin_succeeds(self):
+        # Create a team member to delete
+        sub_user = User.objects.create_user(
+            username="to_delete",
+            email="delete@zevron.com",
+            password="password123",
+            company=self.existing_company,
+            role=User.UserRoles.VIEWER
+        )
+        self.client.force_authenticate(user=self.existing_user)
+        url = reverse('api_team_detail', kwargs={'pk': sub_user.id})
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        # Verify DB
+        self.assertFalse(User.objects.filter(id=sub_user.id).exists())
+
+    def test_delete_self_fails(self):
+        self.client.force_authenticate(user=self.existing_user)
+        url = reverse('api_team_detail', kwargs={'pk': self.existing_user.id})
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("cannot remove your own", response.data["error"])
