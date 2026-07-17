@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 - **Credit Limit Bypass Logic:** Reconfigured `InventoryCheckoutView` to skip outstanding balance limits and debt checks for immediate Card/ACH transactions, allowing over-limit accounts to checkout.
 - **Dynamic Conditional Inputs:** Added slide-open forms with input validations for card details (Number, Expiry, CVV) and ACH routing credentials inside the Flutter Cart screen.
 - **Cart & Checkout Tab Separation:** Split the layout by offloading payment selectors, credit utilization metrics, and billing details forms to a new dedicated checkout screen (`CheckoutScreen`), keeping the `CartTab` clean and focused on item line totals.
+- **Product Details Screen & REST API Endpoint:** Introduced a dedicated product details page (`ProductDetailsScreen`) displaying large Hero visuals, stock status badges, dynamic MSRP discount rates, and a persistent bottom cart stepper, backed by a new REST endpoint (`/api/v1/products/<sku>/`) in Django.
 
 ---
 

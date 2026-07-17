@@ -4,6 +4,7 @@ import '../providers/catalog_provider.dart';
 import '../providers/cart_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/auth_provider.dart';
+import 'product_detail_screen.dart';
 
 class OrderGuideTab extends StatefulWidget {
   const OrderGuideTab({super.key});
@@ -97,56 +98,66 @@ class _OrderGuideTabState extends State<OrderGuideTab> {
                             child: Row(
                               children: [
                                 Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              prod['name'] ?? 'Product',
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(color: themeProvider.textPrimary, fontWeight: FontWeight.bold, fontSize: 14),
+                                  child: InkWell(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => ProductDetailsScreen(sku: prod['sku']),
+                                        ),
+                                      );
+                                    },
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                prod['name'] ?? 'Product',
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: TextStyle(color: themeProvider.textPrimary, fontWeight: FontWeight.bold, fontSize: 14),
+                                              ),
                                             ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: themeProvider.primaryAccent.withOpacity(0.1),
-                                              borderRadius: BorderRadius.circular(4),
-                                              border: Border.all(color: themeProvider.primaryAccent.withOpacity(0.4), width: 0.5),
-                                            ),
-                                            child: Text(
-                                              'Ordered $frequency times',
-                                              style: TextStyle(color: themeProvider.primaryAccent, fontSize: 10, fontWeight: FontWeight.bold),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'SKU: ${prod['sku']} | UOM: ${prod['unit_of_measure']}',
-                                        style: TextStyle(color: themeProvider.textSecondary, fontSize: 11),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Row(
-                                        children: [
-                                          Text(
-                                            '\$${calcPrice.toStringAsFixed(2)}',
-                                            style: TextStyle(color: themeProvider.primaryAccent, fontWeight: FontWeight.bold, fontSize: 14),
-                                          ),
-                                          if (isDiscounted) ...[
-                                            const SizedBox(width: 6),
-                                            Text(
-                                              '\$${basePrice.toStringAsFixed(2)}',
-                                              style: TextStyle(color: themeProvider.textSecondary, fontSize: 11, decoration: TextDecoration.lineThrough),
+                                            const SizedBox(width: 8),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: themeProvider.primaryAccent.withOpacity(0.1),
+                                                borderRadius: BorderRadius.circular(4),
+                                                border: Border.all(color: themeProvider.primaryAccent.withOpacity(0.4), width: 0.5),
+                                              ),
+                                              child: Text(
+                                                'Ordered $frequency times',
+                                                style: TextStyle(color: themeProvider.primaryAccent, fontSize: 10, fontWeight: FontWeight.bold),
+                                              ),
                                             ),
                                           ],
-                                        ],
-                                      ),
-                                    ],
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'SKU: ${prod['sku']} | UOM: ${prod['unit_of_measure']}',
+                                          style: TextStyle(color: themeProvider.textSecondary, fontSize: 11),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Row(
+                                          children: [
+                                            Text(
+                                              '\$${calcPrice.toStringAsFixed(2)}',
+                                              style: TextStyle(color: themeProvider.primaryAccent, fontWeight: FontWeight.bold, fontSize: 14),
+                                            ),
+                                            if (isDiscounted) ...[
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                '\$${basePrice.toStringAsFixed(2)}',
+                                                style: TextStyle(color: themeProvider.textSecondary, fontSize: 11, decoration: TextDecoration.lineThrough),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                                 Row(

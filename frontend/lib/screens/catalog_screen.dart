@@ -5,6 +5,7 @@ import '../providers/cart_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/theme_provider.dart';
 import 'login_screen.dart';
+import 'product_detail_screen.dart';
 
 class CatalogTab extends StatefulWidget {
   const CatalogTab({super.key});
@@ -249,27 +250,40 @@ class _CatalogTabState extends State<CatalogTab> {
                               return Card(
                                 color: themeProvider.surface,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                                  children: [
-                                    // Image Placeholder / Image
-                                    Expanded(
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          color: themeProvider.isDark ? const Color(0xFF2E2E33) : const Color(0xFFE2E8F0),
-                                          borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-                                          image: prod['image_url'] != null
-                                              ? DecorationImage(
-                                                  image: NetworkImage(prod['image_url']),
-                                                  fit: BoxFit.cover,
-                                                )
-                                              : null,
-                                        ),
-                                        child: prod['image_url'] == null
-                                            ? Icon(Icons.image_outlined, color: themeProvider.textSecondary.withOpacity(0.3), size: 40)
-                                            : null,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(8),
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => ProductDetailsScreen(sku: prod['sku']),
                                       ),
-                                    ),
+                                    );
+                                  },
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      // Image Placeholder / Image
+                                      Expanded(
+                                        child: Hero(
+                                          tag: prod['sku'],
+                                          child: Container(
+                                            decoration: BoxDecoration(
+                                              color: themeProvider.isDark ? const Color(0xFF2E2E33) : const Color(0xFFE2E8F0),
+                                              borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                                              image: prod['image_url'] != null
+                                                  ? DecorationImage(
+                                                      image: NetworkImage(prod['image_url']),
+                                                      fit: BoxFit.cover,
+                                                    )
+                                                  : null,
+                                            ),
+                                            child: prod['image_url'] == null
+                                                ? Icon(Icons.image_outlined, color: themeProvider.textSecondary.withOpacity(0.3), size: 40)
+                                                : null,
+                                          ),
+                                        ),
+                                      ),
                                     Padding(
                                       padding: const EdgeInsets.all(10.0),
                                       child: Column(
@@ -375,7 +389,8 @@ class _CatalogTabState extends State<CatalogTab> {
                                     )
                                   ],
                                 ),
-                              );
+                              ),
+                            );
                             },
                           ),
           ),

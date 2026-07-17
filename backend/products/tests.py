@@ -354,6 +354,19 @@ class CheckoutEngineTests(APITestCase):
         prod_1_data = next(item for item in response.data["results"] if item["sku"] == "SKU-ZEEE-01")
         self.assertEqual(prod_1_data["calculated_price"], "85.00")
 
+    def test_product_detail_endpoint_success(self):
+        """Verifies GET /api/v1/products/<sku>/ returns correct serialized fields and contract price."""
+        self.client.force_authenticate(user=self.user_a)
+        url = reverse('api_product_detail', kwargs={"sku": "SKU-ZEEE-01"})
+        
+        response = self.client.get(f"{url}?location_id={self.location_a.id}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["sku"], "SKU-ZEEE-01")
+        self.assertEqual(response.data["name"], self.product_1.name)
+        self.assertEqual(response.data["calculated_price"], "85.00")
+        self.assertEqual(response.data["base_price"], "100.00")
+        self.assertIn("description", response.data)
+
     def test_catalog_retrieval_with_regional_pricing_fallback(self):
         """Verifies regional pricing override is applied when no contract pricing exists."""
         # Setup: Create a regional ZIP price for Product 2 (Base $50 -> Regional $42 for ZIP 39401)

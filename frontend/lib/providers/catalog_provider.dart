@@ -194,4 +194,28 @@ class CatalogProvider extends ChangeNotifier {
       _setError(e.toString());
     }
   }
+
+  // Fetches a single product's detail data
+  Future<Map<String, dynamic>?> fetchProductDetail(String sku, {int? locationId, String? zipCode}) async {
+    final Map<String, dynamic> params = {};
+    if (locationId != null) {
+      params['location_id'] = locationId;
+    }
+    if (zipCode != null) {
+      params['zip_code'] = zipCode;
+    }
+
+    try {
+      final response = await apiClient.dio.get(
+        '/api/v1/products/$sku/',
+        queryParameters: params,
+      );
+      if (response.statusCode == 200) {
+        return response.data as Map<String, dynamic>;
+      }
+    } catch (e) {
+      // Return null on failure and let detail screen display error fallback
+    }
+    return null;
+  }
 }

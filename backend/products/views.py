@@ -379,6 +379,55 @@ class ProductCatalogListView(APIView):
         }, status=status.HTTP_200_OK)
 
 
+class ProductCatalogDetailView(APIView):
+    """
+    Secure endpoint returning the details of a single product SKU
+    with dynamic pricing cascades calculated specifically for the authenticated user and location.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request, sku):
+        from django.shortcuts import get_object_or_404
+        user = request.user
+        location_id = request.query_params.get('location_id')
+        zip_code = request.query_params.get('zip_code')
+
+        product = get_object_or_404(Product, sku=sku, is_available=True)
+
+        # Resolve user's branch location for regional pricing tier checking
+        location = None
+        if location_id and user and user.is_authenticated:
+            location = CompanyLocation.objects.filter(
+                id=location_id,
+                company=user.company
+            ).first()
+
+        calculated_price = calculate_item_price(user, location, product, zip_code=zip_code)
+
+        # Resolve absolute media URL if image is present
+        image_url = None
+        if product.image:
+            image_url = request.build_absolute_uri(product.image.url)
+
+        data = {
+            "sku": product.sku,
+            "name": product.name,
+            "description": product.description,
+            "unit_of_measure": product.unit_of_measure,
+            "base_price": str(product.base_price),
+            "calculated_price": str(calculated_price),
+            "stock_quantity": product.stock_quantity,
+            "image_url": image_url,
+            "category": {
+                "id": product.category.id,
+                "name": product.category.name,
+                "slug": product.category.slug,
+            } if product.category else None,
+            "is_available": product.is_available,
+        }
+        return Response(data, status=status.HTTP_200_OK)
+
+
 class ProductCategoryListView(APIView):
     """
     Exposes a dynamic list of active product categories from the database.
