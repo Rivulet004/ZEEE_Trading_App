@@ -504,9 +504,9 @@ class AdminCsvImportTests(APITestCase):
         self.client.force_login(self.staff_user)
 
         csv_content = (
-            "sku,name,category,unit_of_measure,base_price,stock_quantity,is_available\r\n"
-            "SKU-CSV-01,CSV Widget,Kitchen Supplies,Case of 12,120.00,10,True\r\n"
-            "SKU-CSV-02,CSV Pallet,Warehouse Supply,Pallet,500.00,5,True\r\n"
+            "sku,name,description,category,unit_of_measure,base_price,stock_quantity,is_available\r\n"
+            "SKU-CSV-01,CSV Widget,Premium kitchenware item description,Kitchen Supplies,Case of 12,120.00,10,True\r\n"
+            "SKU-CSV-02,CSV Pallet,,Warehouse Supply,Pallet,500.00,5,True\r\n"
         )
         csv_file = SimpleUploadedFile(
             "catalog.csv",
@@ -521,6 +521,7 @@ class AdminCsvImportTests(APITestCase):
         prod1 = Product.objects.filter(sku="SKU-CSV-01").first()
         self.assertIsNotNone(prod1)
         self.assertEqual(prod1.name, "CSV Widget")
+        self.assertEqual(prod1.description, "Premium kitchenware item description")
         self.assertEqual(prod1.base_price, 120.00)
         self.assertEqual(prod1.category.name, "Kitchen Supplies")
         self.assertEqual(prod1.stock_quantity, 10)

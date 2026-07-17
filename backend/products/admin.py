@@ -117,6 +117,8 @@ class ProductAdmin(ModelAdmin):
                                 defaults = {}
                                 if 'name' in cleaned_row:
                                     defaults['name'] = cleaned_row['name']
+                                if 'description' in cleaned_row:
+                                    defaults['description'] = cleaned_row['description']
                                 if 'base_price' in cleaned_row:
                                     defaults['base_price'] = cleaned_row['base_price']
                                 if 'unit_of_measure' in cleaned_row:
